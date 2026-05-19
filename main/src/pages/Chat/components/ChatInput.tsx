@@ -1,4 +1,5 @@
 import { ArrowRight, Bot, Building2, MonitorCog } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import type { KeyboardEvent } from 'react';
 import type { AiProvider } from '../types/chat.types';
 
@@ -35,10 +36,22 @@ export function ChatInput({
   aiProviders,
   onAiProviderChange,
 }: ChatInputProps) {
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const departmentSummary = getSelectionSummary(selectedDepartments, departments[0]);
   const systemSummary = getSelectionSummary(selectedSystems, systems[0]);
   const departmentCount = getActiveSelectionCount(selectedDepartments, departments[0]);
   const systemCount = getActiveSelectionCount(selectedSystems, systems[0]);
+
+  useEffect(() => {
+    const input = inputRef.current;
+
+    if (!input) {
+      return;
+    }
+
+    input.style.height = 'auto';
+    input.style.height = `${Math.min(input.scrollHeight, 140)}px`;
+  }, [value]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -136,13 +149,13 @@ export function ChatInput({
         </div>
 
         <textarea
+          ref={inputRef}
           className="chat-input"
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Escreva sua mensagem..."
           rows={1}
-          wrap="off"
         />
 
         <div className="chat-input-actions">
