@@ -1,4 +1,5 @@
 export type MessageSender = 'user' | 'assistant';
+export type AiProvider = 'GPT' | 'Claude' | 'Gemini';
 
 export interface ChatSource {
   id: string;

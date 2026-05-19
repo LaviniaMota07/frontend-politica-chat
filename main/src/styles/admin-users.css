@@ -228,6 +228,57 @@
   vertical-align: middle;
 }
 
+.users-empty-cell {
+  height: 96px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  color: var(--text-muted);
+}
+
+.pagination-summary,
+.pagination-page {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.pagination-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pagination-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color-strong);
+  border-radius: 10px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: rgba(47, 125, 246, 0.7);
+  background: rgba(47, 125, 246, 0.14);
+}
+
+.pagination-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 .user-cell {
   display: flex;
   flex-direction: column;
@@ -542,6 +593,15 @@
   .primary-btn,
   .secondary-btn {
     width: 100%;
+  }
+
+  .table-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pagination-actions {
+    justify-content: space-between;
   }
 
   .role-modal-actions {

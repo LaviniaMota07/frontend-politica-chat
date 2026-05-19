@@ -22,6 +22,14 @@ export function UsersTable({ users, onEditRole }: UsersTableProps) {
         </thead>
 
         <tbody>
+          {users.length === 0 && (
+            <tr>
+              <td className="users-empty-cell" colSpan={5}>
+                Nenhum usuário encontrado.
+              </td>
+            </tr>
+          )}
+
           {users.map((user) => (
             <tr key={user.id}>
               <td>

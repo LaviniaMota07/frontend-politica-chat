@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Coins,
   Database,
   Plus,
@@ -23,6 +25,8 @@ type ApiKeyUsageRecord = {
   date: string;
   dateValue: string;
 };
+
+const TOKENS_PER_PAGE = 4;
 
 const apiKeyUsageRecords: ApiKeyUsageRecord[] = [
   {
@@ -65,6 +69,46 @@ const apiKeyUsageRecords: ApiKeyUsageRecord[] = [
     date: '09 Out 2026, 09:45',
     dateValue: '2026-10-09T09:45:00',
   },
+  {
+    id: 5,
+    provider: 'Claude',
+    apiKeyName: 'Claude Atendimento',
+    apiKeyPreview: 'sk-ant-****-7B33',
+    tokenLimit: 2000000,
+    tokens: 743900,
+    date: '08 Out 2026, 16:10',
+    dateValue: '2026-10-08T16:10:00',
+  },
+  {
+    id: 6,
+    provider: 'GPT',
+    apiKeyName: 'GPT Relatórios',
+    apiKeyPreview: 'sk-rpt-****-2C88',
+    tokenLimit: 2500000,
+    tokens: 1320800,
+    date: '08 Out 2026, 10:25',
+    dateValue: '2026-10-08T10:25:00',
+  },
+  {
+    id: 7,
+    provider: 'Gemini',
+    apiKeyName: 'Gemini Documentos',
+    apiKeyPreview: 'gm-****-45FA',
+    tokenLimit: 1200000,
+    tokens: 412600,
+    date: '07 Out 2026, 13:40',
+    dateValue: '2026-10-07T13:40:00',
+  },
+  {
+    id: 8,
+    provider: 'Claude',
+    apiKeyName: 'Claude Auditoria',
+    apiKeyPreview: 'sk-ant-****-9D12',
+    tokenLimit: 1800000,
+    tokens: 879300,
+    date: '07 Out 2026, 08:55',
+    dateValue: '2026-10-07T08:55:00',
+  },
 ];
 
 const totalTokens = 10000000;
@@ -82,6 +126,7 @@ export default function AdminTokens() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [apiProvider, setApiProvider] = useState<AiProvider>('GPT');
   const [apiKey, setApiKey] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const remainingTokens = totalTokens - usedTokens;
   const usagePercent = (usedTokens / totalTokens) * 100;
@@ -99,7 +144,6 @@ export default function AdminTokens() {
 
   useEffect(() => {
     const loadingTimer = window.setTimeout(() => setIsLoading(false), 450);
-
     return () => window.clearTimeout(loadingTimer);
   }, []);
 
@@ -123,6 +167,7 @@ export default function AdminTokens() {
           record.provider.toLowerCase().includes(searchValue) ||
           record.apiKeyName.toLowerCase().includes(searchValue) ||
           record.apiKeyPreview.toLowerCase().includes(searchValue);
+
         const matchesPeriod =
           periodFilter === 'personalizado'
             ? (!customPeriod.start || recordDate >= new Date(customPeriod.start)) &&
@@ -133,6 +178,21 @@ export default function AdminTokens() {
       })
       .sort((firstRecord, secondRecord) => secondRecord.tokens - firstRecord.tokens);
   }, [search, periodFilter, customPeriod]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / TOKENS_PER_PAGE));
+  const pageStart = (currentPage - 1) * TOKENS_PER_PAGE;
+  const pageEnd = pageStart + TOKENS_PER_PAGE;
+  const paginatedRecords = filteredRecords.slice(pageStart, pageEnd);
+  const firstVisibleRecord = filteredRecords.length === 0 ? 0 : pageStart + 1;
+  const lastVisibleRecord = Math.min(pageEnd, filteredRecords.length);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, periodFilter, customPeriod]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   function closeAddModal() {
     setIsAddModalOpen(false);
@@ -219,6 +279,7 @@ export default function AdminTokens() {
         <section className="token-details-section">
           <div className="token-section-header token-details-header">
             <h2>Consumo por API Key</h2>
+
             <div className="token-table-controls">
               <label className="token-search">
                 <Search size={17} />
@@ -271,6 +332,7 @@ export default function AdminTokens() {
                   <th>Tokens da API Key</th>
                 </tr>
               </thead>
+
               <tbody>
                 {isLoading &&
                   Array.from({ length: 4 }).map((_, index) => (
@@ -281,7 +343,7 @@ export default function AdminTokens() {
                     </tr>
                   ))}
 
-                {!isLoading && filteredRecords.map((record) => (
+                {!isLoading && paginatedRecords.map((record) => (
                   <tr key={record.id}>
                     <td>
                       <div className="user-cell">
@@ -301,9 +363,53 @@ export default function AdminTokens() {
                     <td>{formatTokens(record.tokenLimit)}</td>
                   </tr>
                 ))}
+
+                {!isLoading && filteredRecords.length === 0 && (
+                  <tr>
+                    <td className="users-empty-cell" colSpan={4}>
+                      Nenhum registro encontrado.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
+
+          {!isLoading && (
+            <div className="table-pagination" aria-label="Paginação de tokens">
+              <span className="pagination-summary">
+                Mostrando {firstVisibleRecord}-{lastVisibleRecord} de {filteredRecords.length} registros
+              </span>
+
+              <div className="pagination-actions">
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  disabled={currentPage === 1}
+                  aria-label="Página anterior"
+                  title="Página anterior"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                <span className="pagination-page">
+                  Página {currentPage} de {totalPages}
+                </span>
+
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  disabled={currentPage === totalPages}
+                  aria-label="Próxima página"
+                  title="Próxima página"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       </section>
 

@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { getMockAssistantResponse } from '../mocks/chat.mock';
-import type { ChatMessage } from '../types/chat.types';
+import type { AiProvider, ChatMessage } from '../types/chat.types';
 
-export function useChat(selectedDepartments: string[], selectedSystems: string[]) {
+export function useChat(
+  selectedDepartments: string[],
+  selectedSystems: string[],
+  selectedAiProvider: AiProvider
+) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -27,7 +31,11 @@ export function useChat(selectedDepartments: string[], selectedSystems: string[]
         setTimeout(resolve, 1000);
       });
 
-      const assistantResponse = getMockAssistantResponse(selectedDepartments, selectedSystems);
+      const assistantResponse = getMockAssistantResponse(
+        selectedDepartments,
+        selectedSystems,
+        selectedAiProvider
+      );
       const botMessage: ChatMessage = {
         id: crypto.randomUUID(),
         sender: 'assistant',

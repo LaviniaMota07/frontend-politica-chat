@@ -1,4 +1,4 @@
-import type { ChatSource } from '../types/chat.types';
+import type { AiProvider, ChatSource } from '../types/chat.types';
 
 export const chatDepartments = [
   'Todos os departamentos',
@@ -15,6 +15,8 @@ export const chatSystems = [
   'Reembolso Online',
   'Portal de Governança',
 ];
+
+export const aiProviders: AiProvider[] = ['GPT', 'Claude', 'Gemini'];
 
 const departmentKnowledge: Record<string, { content: string; sources: ChatSource[] }> = {
   'Governança / RH': {
@@ -113,7 +115,11 @@ const defaultKnowledge = {
   ],
 };
 
-export function getMockAssistantResponse(departments: string[], systems: string[]) {
+export function getMockAssistantResponse(
+  departments: string[],
+  systems: string[],
+  aiProvider: AiProvider
+) {
   const selectedDepartments = departments.filter((department) => department !== chatDepartments[0]);
   const selectedSystems = systems.filter((system) => system !== chatSystems[0]);
   const departmentResponses = selectedDepartments
@@ -126,10 +132,13 @@ export function getMockAssistantResponse(departments: string[], systems: string[
 
   if (responses.length > 0) {
     return {
-      content: responses.map((response) => response.content).join('\n\n'),
+      content: `[${aiProvider}] ${responses.map((response) => response.content).join('\n\n')}`,
       sources: responses.flatMap((response) => response.sources),
     };
   }
 
-  return defaultKnowledge;
+  return {
+    ...defaultKnowledge,
+    content: `[${aiProvider}] ${defaultKnowledge.content}`,
+  };
 }

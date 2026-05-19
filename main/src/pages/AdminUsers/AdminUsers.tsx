@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { UsersStats } from './components/UsersStats';
 import { UsersTable } from './components/UsersTable';
 import type { User, UserRole, UserStatus } from '../../types/user';
 import '../../styles/admin-users.css';
+
+const USERS_PER_PAGE = 4;
 
 const mockUsers: User[] = [
   {
@@ -74,6 +77,7 @@ export default function AdminUsers() {
   const [inviteName, setInviteName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<UserRole>('Default');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
   const [requests, setRequests] = useState<AccessRequest[]>(mockRequests);
 
@@ -97,8 +101,22 @@ export default function AdminUsers() {
   const totalAdmins = users.filter((user) => user.role === 'Admin').length;
   const totalDefault = users.filter((user) => user.role === 'Default').length;
   const activeUsers = users.filter((user) => user.status === 'Ativo').length;
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+  const pageStart = (currentPage - 1) * USERS_PER_PAGE;
+  const pageEnd = pageStart + USERS_PER_PAGE;
+  const paginatedUsers = filteredUsers.slice(pageStart, pageEnd);
+  const firstVisibleUser = filteredUsers.length === 0 ? 0 : pageStart + 1;
+  const lastVisibleUser = Math.min(pageEnd, filteredUsers.length);
 
   const departments = ['Todos', ...new Set(users.map((user) => user.department))];
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, roleFilter, departmentFilter]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   function handleOpenRoleModal(user: User) {
     setEditingUser(user);
@@ -241,7 +259,41 @@ export default function AdminUsers() {
             </div>
           </div>
 
-          <UsersTable users={filteredUsers} onEditRole={handleOpenRoleModal} />
+          <UsersTable users={paginatedUsers} onEditRole={handleOpenRoleModal} />
+
+          <div className="table-pagination" aria-label="Paginação de usuários">
+            <span className="pagination-summary">
+              Mostrando {firstVisibleUser}-{lastVisibleUser} de {filteredUsers.length} usuários
+            </span>
+
+            <div className="pagination-actions">
+              <button
+                type="button"
+                className="pagination-btn"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+                aria-label="Página anterior"
+                title="Página anterior"
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              <span className="pagination-page">
+                Página {currentPage} de {totalPages}
+              </span>
+
+              <button
+                type="button"
+                className="pagination-btn"
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={currentPage === totalPages}
+                aria-label="Próxima página"
+                title="Próxima página"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
         </section>
       </section>
 

@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
-import { Edit3, Plus, Search, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Edit3, Plus, Search, Trash2 } from 'lucide-react';
 import '../../styles/admin-users.css';
 import '../../styles/admin-catalogs.css';
+
+const ITEMS_PER_PAGE = 4;
 
 type CatalogStatus = 'Ativo' | 'Inativo';
 type CatalogMode = 'departments' | 'systems';
@@ -98,6 +100,7 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
   const [deleteTarget, setDeleteTarget] = useState<CatalogItem | null>(null);
   const [formValues, setFormValues] = useState(emptyForm);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const isDepartmentsTab = mode === 'departments';
   const currentItems = isDepartmentsTab ? departments : systems;
@@ -115,8 +118,23 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
     });
   }, [currentItems, searchTerm, statusFilter]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
+  const pageStart = (currentPage - 1) * ITEMS_PER_PAGE;
+  const pageEnd = pageStart + ITEMS_PER_PAGE;
+  const paginatedItems = filteredItems.slice(pageStart, pageEnd);
+  const firstVisibleItem = filteredItems.length === 0 ? 0 : pageStart + 1;
+  const lastVisibleItem = Math.min(pageEnd, filteredItems.length);
+
   const activeDepartments = departments.filter((item) => item.status === 'Ativo').length;
   const activeSystems = systems.filter((item) => item.status === 'Ativo').length;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, mode]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   function handleOpenCreate() {
     setEditingItem(null);
@@ -275,7 +293,7 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
                 </tr>
               </thead>
               <tbody>
-                {filteredItems.map((item) => (
+                {paginatedItems.map((item) => (
                   <tr key={`${mode}-${item.id}`}>
                     <td>
                       <strong className="catalog-name">{item.name}</strong>
@@ -322,6 +340,40 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="table-pagination" aria-label="Paginação">
+            <span className="pagination-summary">
+              Mostrando {firstVisibleItem}-{lastVisibleItem} de {filteredItems.length} {isDepartmentsTab ? 'departamentos' : 'sistemas'}
+            </span>
+
+            <div className="pagination-actions">
+              <button
+                type="button"
+                className="pagination-btn"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+                aria-label="Página anterior"
+                title="Página anterior"
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              <span className="pagination-page">
+                Página {currentPage} de {totalPages}
+              </span>
+
+              <button
+                type="button"
+                className="pagination-btn"
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={currentPage === totalPages}
+                aria-label="Próxima página"
+                title="Próxima página"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
         </section>
       </section>

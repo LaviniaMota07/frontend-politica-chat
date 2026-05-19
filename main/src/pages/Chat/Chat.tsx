@@ -6,19 +6,21 @@ import { ChatInput } from './components/ChatInput';
 import { ChatMessages } from './components/ChatMessages';
 import { ChatWelcome } from './components/ChatWelcome';
 import { useChat } from './hooks/useChat';
-import { chatDepartments, chatSystems } from './mocks/chat.mock';
+import { aiProviders, chatDepartments, chatSystems } from './mocks/chat.mock';
+import type { AiProvider } from './types/chat.types';
 
 export default function Chat() {
   const { user } = useAuth();
   const [selectedDepartments, setSelectedDepartments] = useState([chatDepartments[0]]);
   const [selectedSystems, setSelectedSystems] = useState([chatSystems[0]]);
+  const [selectedAiProvider, setSelectedAiProvider] = useState<AiProvider>(aiProviders[0]);
   const {
     messages,
     inputValue,
     setInputValue,
     handleSendMessage,
     isSending,
-  } = useChat(selectedDepartments, selectedSystems);
+  } = useChat(selectedDepartments, selectedSystems, selectedAiProvider);
 
   const hasMessages = messages.length > 0;
   const isAdmin = user.role === '2';
@@ -52,6 +54,9 @@ export default function Chat() {
           selectedSystems={selectedSystems}
           systems={chatSystems}
           onSystemsChange={setSelectedSystems}
+          selectedAiProvider={selectedAiProvider}
+          aiProviders={aiProviders}
+          onAiProviderChange={setSelectedAiProvider}
         />
       </section>
     </main>

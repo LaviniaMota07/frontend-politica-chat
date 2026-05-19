@@ -427,6 +427,24 @@
   background: #ef4444;
 }
 
+.token-details-section .table-pagination {
+  min-height: 64px;
+  margin-top: 0;
+  padding: 14px 30px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  background: #0b1526;
+}
+
+.token-details-section .pagination-actions {
+  min-height: 36px;
+}
+
+.token-details-section .pagination-summary,
+.token-details-section .pagination-page {
+  line-height: 36px;
+}
+
+
 @media (max-width: 1100px) {
   .tokens-stats-grid {
     grid-template-columns: 1fr;
@@ -472,4 +490,15 @@
   .token-stat-value {
     font-size: 2rem;
   }
+
+    .token-details-section .table-pagination {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 14px 18px 18px;
+  }
+
+  .token-details-section .pagination-actions {
+    justify-content: space-between;
+  }
+
 }
