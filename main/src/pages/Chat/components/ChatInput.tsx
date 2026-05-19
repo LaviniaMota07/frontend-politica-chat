@@ -1,5 +1,5 @@
 import { ArrowRight, Bot, Building2, MonitorCog } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import type { AiProvider } from '../types/chat.types';
 
@@ -37,10 +37,20 @@ export function ChatInput({
   onAiProviderChange,
 }: ChatInputProps) {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const [departmentSearch, setDepartmentSearch] = useState('');
+  const [systemSearch, setSystemSearch] = useState('');
   const departmentSummary = getSelectionSummary(selectedDepartments, departments[0]);
   const systemSummary = getSelectionSummary(selectedSystems, systems[0]);
   const departmentCount = getActiveSelectionCount(selectedDepartments, departments[0]);
   const systemCount = getActiveSelectionCount(selectedSystems, systems[0]);
+  const filteredDepartments = useMemo(
+    () => filterOptions(departments, departmentSearch, departments[0]),
+    [departmentSearch, departments]
+  );
+  const filteredSystems = useMemo(
+    () => filterOptions(systems, systemSearch, systems[0]),
+    [systemSearch, systems]
+  );
 
   useEffect(() => {
     const input = inputRef.current;
@@ -84,7 +94,16 @@ export function ChatInput({
             </summary>
 
             <div className="chat-filter-options">
-              {departments.map((department) => (
+              <input
+                className="chat-filter-search"
+                type="search"
+                value={departmentSearch}
+                onChange={(event) => setDepartmentSearch(event.target.value)}
+                placeholder="Buscar departamento"
+                aria-label="Buscar departamento"
+              />
+
+              {filteredDepartments.map((department) => (
                 <label className="chat-filter-option" key={department}>
                   <input
                     type="checkbox"
@@ -94,6 +113,10 @@ export function ChatInput({
                   <span>{department}</span>
                 </label>
               ))}
+
+              {filteredDepartments.length === 0 && (
+                <span className="chat-filter-empty">Nenhum departamento encontrado</span>
+              )}
             </div>
           </details>
 
@@ -109,7 +132,16 @@ export function ChatInput({
             </summary>
 
             <div className="chat-filter-options">
-              {systems.map((system) => (
+              <input
+                className="chat-filter-search"
+                type="search"
+                value={systemSearch}
+                onChange={(event) => setSystemSearch(event.target.value)}
+                placeholder="Buscar sistema"
+                aria-label="Buscar sistema"
+              />
+
+              {filteredSystems.map((system) => (
                 <label className="chat-filter-option" key={system}>
                   <input
                     type="checkbox"
@@ -119,6 +151,10 @@ export function ChatInput({
                   <span>{system}</span>
                 </label>
               ))}
+
+              {filteredSystems.length === 0 && (
+                <span className="chat-filter-empty">Nenhum sistema encontrado</span>
+              )}
             </div>
           </details>
 
@@ -205,4 +241,16 @@ function getSelectionSummary(selection: string[], allOption: string) {
 
 function getActiveSelectionCount(selection: string[], allOption: string) {
   return selection.filter((option) => option !== allOption).length;
+}
+
+function filterOptions(options: string[], search: string, allOption: string) {
+  const normalizedSearch = search.trim().toLowerCase();
+
+  if (!normalizedSearch) {
+    return options;
+  }
+
+  return options.filter(
+    (option) => option === allOption || option.toLowerCase().includes(normalizedSearch)
+  );
 }
