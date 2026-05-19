@@ -8,11 +8,12 @@ interface SharedUser {
   name: string;
   email: string;
   status: 'pending' | 'active';
+  permission: SharePermission;
 }
 
 const mockSharedUsers: SharedUser[] = [
-  { id: 1, name: 'Ana Souza', email: 'ana.souza@empresa.com', status: 'active' },
-  { id: 2, name: 'Carlos Oliveira', email: 'carlos.oliveira@empresa.com', status: 'pending' },
+  { id: 1, name: 'Ana Souza', email: 'ana.souza@empresa.com', status: 'active', permission: 'read' },
+  { id: 2, name: 'Carlos Oliveira', email: 'carlos.oliveira@empresa.com', status: 'pending', permission: 'edit' },
 ];
 
 export function ChatHeader() {
@@ -21,7 +22,6 @@ export function ChatHeader() {
   const [generatedLink, setGeneratedLink] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [invitedEmails, setInvitedEmails] = useState<string[]>([]);
   const [inviteError, setInviteError] = useState('');
   const [sharedUsers, setSharedUsers] = useState<SharedUser[]>(mockSharedUsers);
 
@@ -45,13 +45,20 @@ export function ChatHeader() {
     if (!email) return;
     const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (!isValid) { setInviteError('E-mail inválido.'); return; }
-    if (invitedEmails.includes(email)) { setInviteError('E-mail já adicionado.'); return; }
-    setInvitedEmails((prev) => [...prev, email]);
-    setInviteEmail('');
-  }
+    if (sharedUsers.some((u) => u.email === email)) {
+      setInviteError('E-mail já adicionado.'); return;
+    }
 
-  function handleRemoveEmail(email: string) {
-    setInvitedEmails((prev) => prev.filter((e) => e !== email));
+    const newUser: SharedUser = {
+      id: Date.now(),
+      name: email.split('@')[0],
+      email,
+      status: 'pending',
+      permission,
+    };
+
+    setSharedUsers((prev) => [...prev, newUser]);
+    setInviteEmail('');
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -73,7 +80,6 @@ export function ChatHeader() {
     setGeneratedLink('');
     setIsCopied(false);
     setInviteEmail('');
-    setInvitedEmails([]);
     setInviteError('');
   }
 
@@ -149,9 +155,9 @@ export function ChatHeader() {
                 </label>
               </fieldset>
 
-              {/* ── Convidar por e-mail ── */}
+              {/* ── Adicionar por e-mail ── */}
               <div className="chat-share-invite-area">
-                <span className="chat-share-invite-label">Convidar por e-mail</span>
+                <span className="chat-share-invite-label">Adicionar por e-mail</span>
                 <div className="chat-share-invite-row">
                   <input
                     type="email"
@@ -168,18 +174,6 @@ export function ChatHeader() {
                   </button>
                 </div>
                 {inviteError && <p className="chat-share-invite-error">{inviteError}</p>}
-                {invitedEmails.length > 0 && (
-                  <ul className="chat-share-invite-list">
-                    {invitedEmails.map((email) => (
-                      <li key={email} className="chat-share-invite-chip">
-                        <span>{email}</span>
-                        <button type="button" onClick={() => handleRemoveEmail(email)} aria-label={`Remover ${email}`}>
-                          <X size={12} />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
 
               <div className="chat-share-link-area">
@@ -213,18 +207,19 @@ export function ChatHeader() {
                         <span className="chat-share-user-email">{user.email}</span>
                       </div>
 
+                      <span
+                        className="chat-share-user-status"
+                        style={{
+                          background: user.permission === 'edit'
+                            ? 'rgba(47, 125, 246, 0.14)'
+                            : 'rgba(16, 185, 129, 0.14)',
+                          color: user.permission === 'edit' ? '#7eb8ff' : '#34d399',
+                        }}
+                      >
+                        {user.permission === 'edit' ? 'Pode editar' : 'Somente leitura'}
+                      </span>
+
                       <div className="chat-share-user-actions">
-                        {user.status === 'pending' && (
-                          <button
-                            type="button"
-                            className="chat-share-user-btn accept"
-                            onClick={() => handleAcceptUser(user.id)}
-                            aria-label={`Aceitar ${user.name}`}
-                          >
-                            <Check size={13} />
-                            Aceitar
-                          </button>
-                        )}
                         <button
                           type="button"
                           className="chat-share-user-btn remove"
