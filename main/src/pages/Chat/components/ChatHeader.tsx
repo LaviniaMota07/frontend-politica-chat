@@ -65,12 +65,6 @@ export function ChatHeader() {
     if (e.key === 'Enter') { e.preventDefault(); handleAddEmail(); }
   }
 
-  function handleAcceptUser(id: number) {
-    setSharedUsers((prev) =>
-      prev.map((u) => u.id === id ? { ...u, status: 'active' } : u)
-    );
-  }
-
   function handleRemoveUser(id: number) {
     setSharedUsers((prev) => prev.filter((u) => u.id !== id));
   }
