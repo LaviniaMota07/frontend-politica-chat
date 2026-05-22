@@ -1,155 +1,19 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useMemo, useState, useRef, useEffect, KeyboardEvent, MouseEvent, ChangeEvent, DragEvent } from "react";
 
-// ── Icon components ───────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-interface IconProps {
-  size?: number;
+interface PolicyFormData {
+  file: File | null;
+  departmentIds: string[];
+  systemIds: string[];
 }
 
-const IconFileText = ({ size = 16 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <polyline points="14 2 14 8 20 8" />
-    <line x1="16" y1="13" x2="8" y2="13" />
-    <line x1="16" y1="17" x2="8" y2="17" />
-    <polyline points="10 9 9 9 8 9" />
-  </svg>
-);
-
-const IconPlus = ({ size = 16 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="12" y1="5" x2="12" y2="19" />
-    <line x1="5" y1="12" x2="19" y2="12" />
-  </svg>
-);
-
-const IconSearch = ({ size = 16 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="8" />
-    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-  </svg>
-);
-
-const IconCheck = ({ size = 14 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
-
-const IconPower = ({ size = 16 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
-    <line x1="12" y1="2" x2="12" y2="12" />
-  </svg>
-);
-
-const IconEyeOff = ({ size = 16 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20C7 20 2.73 16.89 1 12c.92-2.6 2.63-4.84 4.94-6.34" />
-    <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
-    <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 8a11.8 11.8 0 0 1-1.67 2.68" />
-    <line x1="1" y1="1" x2="23" y2="23" />
-  </svg>
-);
-
-const IconBuilding = ({ size = 13 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <path d="M9 22V12h6v10" />
-    <path d="M3 9h18" />
-  </svg>
-);
-
-const IconCpu = ({ size = 13 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="4" y="4" width="16" height="16" rx="2" />
-    <rect x="9" y="9" width="6" height="6" />
-    <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
-    <line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
-    <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="15" x2="23" y2="15" />
-    <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="15" x2="4" y2="15" />
-  </svg>
-);
-
-const IconTag = ({ size = 13 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-    <line x1="7" y1="7" x2="7.01" y2="7" />
-  </svg>
-);
-
-const IconUpload = ({ size = 16 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="16 16 12 12 8 16" />
-    <line x1="12" y1="12" x2="12" y2="21" />
-    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
-  </svg>
-);
-
-const IconX = ({ size = 16 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18" />
-    <line x1="6" y1="6" x2="18" y2="18" />
-  </svg>
-);
-
-const IconFile = ({ size = 20 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-    <polyline points="13 2 13 9 20 9" />
-  </svg>
-);
-
-const IconTrash = ({ size = 16 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6" />
-    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-    <path d="M10 11v6" />
-    <path d="M14 11v6" />
-    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-  </svg>
-);
-
-const IconAlertTriangle = ({ size = 22 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-    <line x1="12" y1="9" x2="12" y2="13" />
-    <line x1="12" y1="17" x2="12.01" y2="17" />
-  </svg>
-);
-
-const IconEdit = ({ size = 14 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 20h9"/>
-    <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-  </svg>
-);
-
-// ── Domain types ──────────────────────────────────────────────────────────────
-
-type VersionStatus = "approved" | "published";
-
-interface DocumentVersion {
+interface Version {
   id: number;
   version: string;
   timelineLabel: string;
   isActive: boolean;
-  status: VersionStatus;
+  status: "approved" | "published";
   name: string;
   fileName: string | null;
 }
@@ -161,19 +25,159 @@ interface Document {
   updatedLabel: string;
   departments: string[];
   systems: string[];
-  versions: DocumentVersion[];
+  versions: Version[];
 }
 
-type VersionModalState =
-  | { mode: "create" }
-  | { mode: "edit"; version: DocumentVersion };
+interface VersionModalState {
+  mode: "create" | "edit";
+  version?: Version;
+}
 
-interface VersionModalPayload {
+interface VersionModalConfirmPayload {
   versionNumber: string;
   versionName: string;
   fileName: string | null;
   versionId?: number;
 }
+
+// ── Icon components ───────────────────────────────────────────────────────────
+
+interface IconProps {
+  size?: number;
+}
+
+const IconFileText: React.FC<IconProps> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" />
+    <line x1="16" y1="17" x2="8" y2="17" />
+    <polyline points="10 9 9 9 8 9" />
+  </svg>
+);
+
+const IconPlus: React.FC<IconProps> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+
+const IconSearch: React.FC<IconProps> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
+
+const IconCheck: React.FC<IconProps> = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+const IconPower: React.FC<IconProps> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+    <line x1="12" y1="2" x2="12" y2="12" />
+  </svg>
+);
+
+const IconEyeOff: React.FC<IconProps> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20C7 20 2.73 16.89 1 12c.92-2.6 2.63-4.84 4.94-6.34" />
+    <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
+    <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 8a11.8 11.8 0 0 1-1.67 2.68" />
+    <line x1="1" y1="1" x2="23" y2="23" />
+  </svg>
+);
+
+const IconBuilding: React.FC<IconProps> = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M9 22V12h6v10" />
+    <path d="M3 9h18" />
+  </svg>
+);
+
+const IconCpu: React.FC<IconProps> = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="4" y="4" width="16" height="16" rx="2" />
+    <rect x="9" y="9" width="6" height="6" />
+    <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
+    <line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
+    <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="15" x2="23" y2="15" />
+    <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="15" x2="4" y2="15" />
+  </svg>
+);
+
+const IconTag: React.FC<IconProps> = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+    <line x1="7" y1="7" x2="7.01" y2="7" />
+  </svg>
+);
+
+const IconUpload: React.FC<IconProps> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="16 16 12 12 8 16" />
+    <line x1="12" y1="12" x2="12" y2="21" />
+    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+  </svg>
+);
+
+const IconX: React.FC<IconProps> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
+const IconFile: React.FC<IconProps> = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+    <polyline points="13 2 13 9 20 9" />
+  </svg>
+);
+
+const IconAlertTriangle: React.FC<IconProps> = ({ size = 22 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+
+const IconEdit: React.FC<IconProps> = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 20h9"/>
+    <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+  </svg>
+);
+
+const IconTrash: React.FC<IconProps> = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+    <path d="M10 11v6"/><path d="M14 11v6"/>
+    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+  </svg>
+);
 
 // ── Constants & helpers ───────────────────────────────────────────────────────
 
@@ -182,13 +186,13 @@ const DEFAULT_TIMELINE: string[] = [
   "03 de Out, 11:20","28 de Set, 08:10","22 de Set, 15:50","14 de Set, 09:05",
 ];
 
-const createVersionHistory = (labels: string[] = ["2.1","2.0","1.9","1.8"]): DocumentVersion[] =>
+const createVersionHistory = (labels: string[] = ["2.1","2.0","1.9","1.8"]): Version[] =>
   labels.map((label, index) => ({
     id: Number(`${Date.now()}${index}`) + Math.floor(Math.random() * 1000),
     version: label,
     timelineLabel: DEFAULT_TIMELINE[index] ?? `Versão anterior ${index + 1}`,
     isActive: index === 0,
-    status: (index === 0 ? "approved" : "published") as VersionStatus,
+    status: index === 0 ? "approved" : "published",
     name: "",
     fileName: null,
   }));
@@ -196,12 +200,28 @@ const createVersionHistory = (labels: string[] = ["2.1","2.0","1.9","1.8"]): Doc
 const initialDocuments: Document[] = [
   { id: 1, title: "Código de Conduta", code: "POL-2024-001", updatedLabel: "Atualizado ontem", departments: ["Recursos Humanos", "Jurídico"], systems: ["Portal RH", "Intranet"], versions: createVersionHistory(["2.1","2.0","1.9","1.8"]) },
   { id: 2, title: "Política de Férias", code: "POL-2024-042", updatedLabel: "Há 3 dias", departments: ["Recursos Humanos"], systems: ["Portal RH"], versions: createVersionHistory(["1.7","1.6","1.5","1.4"]) },
-  { id: 3, title: "Trabalho Remoto", code: "POL-2024-015", updatedLabel: "Há 1 semana", departments: ["Operações", "TI"], systems: ["Intranet", "ServiceDesk"], versions: createVersionHistory(["3.2","3.1","3.0","2.9"]) },
+  { id: 3, title: "Trabalho Remoto", code: "POL-2024-015", updatedLabel: "Há 1 semana", departments: ["Operações", "TI"], systems: ["Intranet", "ServiceDesk", "SAP HCM"], versions: createVersionHistory(["3.2","3.1","3.0","2.9"]) },
   { id: 4, title: "Benefícios e Auxílios", code: "POL-2024-008", updatedLabel: "Há 2 semanas", departments: ["Financeiro", "Recursos Humanos"], systems: ["SAP HCM"], versions: createVersionHistory(["1.4","1.3","1.2","1.1"]) },
-  { id: 5, title: "Uso de Equipamentos", code: "POL-2024-023", updatedLabel: "Há 1 mês", departments: ["TI"], systems: ["ServiceDesk", "Portal RH"], versions: createVersionHistory(["2.3","2.2","2.1","2.0"]) },
+  { id: 5, title: "Uso de Equipamentos", code: "POL-2024-023", updatedLabel: "Há 1 mês", departments: ["TI"], systems: ["ServiceDesk", "Portal RH", "Intranet"], versions: createVersionHistory(["2.3","2.2","2.1","2.0"]) },
 ];
 
-const getNextVersionNumber = (versions: DocumentVersion[]): string => {
+const DEP_MAP: Record<string, string> = {
+  "dep-1": "Recursos Humanos",
+  "dep-2": "Tecnologia da Informação",
+  "dep-3": "Jurídico",
+  "dep-4": "Financeiro",
+  "dep-5": "Operações",
+};
+
+const SYS_MAP: Record<string, string> = {
+  "sys-1": "ERP Corporativo",
+  "sys-2": "Portal do Colaborador",
+  "sys-3": "Sistema de RH",
+  "sys-4": "Helpdesk",
+  "sys-5": "Intranet",
+};
+
+const getNextVersionNumber = (versions: Version[]): string => {
   const highest = Math.max(...versions.map((v) => parseFloat(v.version)));
   return (Math.round((highest + 0.1) * 10) / 10).toFixed(1);
 };
@@ -210,22 +230,27 @@ const getVersionGridStyle = (count: number): React.CSSProperties => ({
   gridTemplateColumns: `repeat(${Math.max(count, 4)}, minmax(240px, 1fr))`,
 });
 
-const getLatestVersion = (versions: DocumentVersion[]): DocumentVersion =>
+const getLatestVersion = (versions: Version[]): Version =>
   versions.reduce((max, v) => parseFloat(v.version) > parseFloat(max.version) ? v : max);
 
-const getActiveVersion = (versions: DocumentVersion[]): DocumentVersion | null =>
+const getActiveVersion = (versions: Version[]): Version | null =>
   versions.find((v) => v.isActive) ?? null;
 
 // ── TagInput ──────────────────────────────────────────────────────────────────
 
 interface TagInputProps {
   values: string[];
-  onChange: (vals: string[]) => void;
+  onChange: (values: string[]) => void;
   placeholder?: string;
   colorClass?: string;
 }
 
-function TagInput({ values, onChange, placeholder = "Adicionar...", colorClass = "dm-tag-blue" }: TagInputProps) {
+const TagInput: React.FC<TagInputProps> = ({
+  values,
+  onChange,
+  placeholder = "Adicionar...",
+  colorClass = "dm-tag-blue",
+}) => {
   const [input, setInput] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -237,7 +262,7 @@ function TagInput({ values, onChange, placeholder = "Adicionar...", colorClass =
 
   const removeTag = (idx: number): void => onChange(values.filter((_, i) => i !== idx));
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(); }
     if (e.key === "Backspace" && input === "" && values.length > 0) onChange(values.slice(0, -1));
   };
@@ -247,7 +272,7 @@ function TagInput({ values, onChange, placeholder = "Adicionar...", colorClass =
       {values.map((v, i) => (
         <span key={i} className="dm-tag-chip">
           {v}
-          <button className="dm-tag-chip-remove" onClick={(e) => { e.stopPropagation(); removeTag(i); }}>
+          <button className="dm-tag-chip-remove" onClick={(e: MouseEvent) => { e.stopPropagation(); removeTag(i); }}>
             <IconX size={10} />
           </button>
         </span>
@@ -256,34 +281,37 @@ function TagInput({ values, onChange, placeholder = "Adicionar...", colorClass =
         ref={inputRef}
         className="dm-tag-input"
         value={input}
-        onChange={(e) => setInput(e.target.value)}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={addTag}
         placeholder={values.length === 0 ? placeholder : ""}
       />
     </div>
   );
-}
+};
 
-// ── VersionModal (create + edit) ──────────────────────────────────────────────
+// ── VersionModal ──────────────────────────────────────────────────────────────
 
 interface VersionModalProps {
   mode: "create" | "edit";
   suggestedVersion?: string;
-  initialData?: DocumentVersion | null;
-  onConfirm: (payload: VersionModalPayload) => void;
+  initialData?: Version | null;
+  onConfirm: (payload: VersionModalConfirmPayload) => void;
   onClose: () => void;
 }
 
-function VersionModal({ mode, suggestedVersion, initialData = null, onConfirm, onClose }: VersionModalProps) {
+const VersionModal: React.FC<VersionModalProps> = ({
+  mode,
+  suggestedVersion,
+  initialData = null,
+  onConfirm,
+  onClose,
+}) => {
   const isEdit = mode === "edit";
-
   const [versionNumber, setVersionNumber] = useState<string>(
     isEdit ? (initialData?.version ?? "") : (suggestedVersion ?? "")
   );
-  const [versionName, setVersionName] = useState<string>(
-    isEdit ? (initialData?.name ?? "") : ""
-  );
+  const [versionName, setVersionName] = useState<string>(isEdit ? (initialData?.name ?? "") : "");
   const [file, setFile] = useState<File | null>(null);
   const [existingFileName, setExistingFileName] = useState<string | null>(
     isEdit ? (initialData?.fileName ?? null) : null
@@ -295,13 +323,13 @@ function VersionModal({ mode, suggestedVersion, initialData = null, onConfirm, o
     if (f) { setFile(f); setExistingFileName(null); }
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>): void => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>): void => {
     e.preventDefault();
     setDragging(false);
     handleFile(e.dataTransfer.files[0]);
   };
 
-  const handleRemoveFile = (e: React.MouseEvent): void => {
+  const handleRemoveFile = (e: MouseEvent): void => {
     e.stopPropagation();
     setFile(null);
     setExistingFileName(null);
@@ -313,11 +341,11 @@ function VersionModal({ mode, suggestedVersion, initialData = null, onConfirm, o
       versionNumber: versionNumber.trim(),
       versionName: versionName.trim(),
       fileName: file ? file.name : existingFileName,
-      versionId: isEdit ? (initialData?.id) : undefined,
+      versionId: isEdit ? initialData?.id : undefined,
     });
   };
 
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>): void => {
+  const handleBackdropClick = (e: MouseEvent<HTMLDivElement>): void => {
     if (e.target === e.currentTarget) onClose();
   };
 
@@ -334,39 +362,25 @@ function VersionModal({ mode, suggestedVersion, initialData = null, onConfirm, o
               {isEdit ? <IconEdit size={18} /> : <IconPlus size={18} />}
             </div>
             <div>
-              <h3 className="dm-modal-title">
-                {isEdit ? `Editar versão ${initialData?.version}` : "Nova versão"}
-              </h3>
-              <p className="dm-modal-subtitle">
-                {isEdit
-                  ? "Altere os dados desta versão do documento"
-                  : "Preencha os dados da nova versão do documento"}
-              </p>
+              <h3 className="dm-modal-title">{isEdit ? `Editar versão ${initialData?.version}` : "Nova versão"}</h3>
+              <p className="dm-modal-subtitle">{isEdit ? "Altere os dados desta versão do documento" : "Preencha os dados da nova versão do documento"}</p>
             </div>
           </div>
-          <button className="dm-modal-close" onClick={onClose} aria-label="Fechar modal">
-            <IconX size={16} />
-          </button>
+          <button className="dm-modal-close" onClick={onClose}><IconX size={16} /></button>
         </div>
 
         <div className="dm-modal-body">
           <div className="dm-modal-field">
-            <label className="dm-modal-label">
-              Número da versão <span className="dm-modal-required">*</span>
-            </label>
+            <label className="dm-modal-label">Número da versão <span className="dm-modal-required">*</span></label>
             <input
               className="dm-modal-input"
               type="text"
               value={versionNumber}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVersionNumber(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setVersionNumber(e.target.value)}
               placeholder="Ex: 2.2"
               autoFocus
             />
-            <span className="dm-modal-hint">
-              {isEdit
-                ? "Edite o número identificador desta versão"
-                : "Versão sugerida com base no histórico atual"}
-            </span>
+            <span className="dm-modal-hint">{isEdit ? "Edite o número identificador desta versão" : "Versão sugerida com base no histórico atual"}</span>
           </div>
 
           <div className="dm-modal-field">
@@ -375,7 +389,7 @@ function VersionModal({ mode, suggestedVersion, initialData = null, onConfirm, o
               className="dm-modal-input"
               type="text"
               value={versionName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVersionName(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setVersionName(e.target.value)}
               placeholder="Ex: Revisão de compliance Q4"
             />
             <span className="dm-modal-hint">Opcional — um rótulo descritivo para identificar esta versão</span>
@@ -385,7 +399,7 @@ function VersionModal({ mode, suggestedVersion, initialData = null, onConfirm, o
             <label className="dm-modal-label">Arquivo do documento</label>
             <div
               className={`dm-dropzone${dragging ? " dm-dropzone-active" : ""}${hasFile ? " dm-dropzone-filled" : ""}`}
-              onDragOver={(e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); setDragging(true); }}
+              onDragOver={(e: DragEvent<HTMLDivElement>) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
               onDrop={handleDrop}
               onClick={() => { if (!hasFile) fileInputRef.current?.click(); }}
@@ -400,26 +414,17 @@ function VersionModal({ mode, suggestedVersion, initialData = null, onConfirm, o
                   <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                     <button
                       className="dm-dropzone-remove dm-dropzone-replace"
-                      onClick={(e: React.MouseEvent) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                      title="Substituir arquivo"
+                      onClick={(e: MouseEvent) => { e.stopPropagation(); fileInputRef.current?.click(); }}
                     >
                       <IconUpload size={12} />
                     </button>
-                    <button
-                      className="dm-dropzone-remove"
-                      onClick={handleRemoveFile}
-                      aria-label="Remover arquivo"
-                    >
-                      <IconX size={13} />
-                    </button>
+                    <button className="dm-dropzone-remove" onClick={handleRemoveFile}><IconX size={13} /></button>
                   </div>
                 </div>
               ) : (
                 <div className="dm-dropzone-empty">
                   <div className="dm-dropzone-upload-icon"><IconUpload size={22} /></div>
-                  <p className="dm-dropzone-text">
-                    Arraste um arquivo aqui ou <span className="dm-dropzone-link">clique para selecionar</span>
-                  </p>
+                  <p className="dm-dropzone-text">Arraste um arquivo aqui ou <span className="dm-dropzone-link">clique para selecionar</span></p>
                   <p className="dm-dropzone-sub">PDF, DOCX, XLSX — até 50 MB</p>
                 </div>
               )}
@@ -429,7 +434,7 @@ function VersionModal({ mode, suggestedVersion, initialData = null, onConfirm, o
               type="file"
               style={{ display: "none" }}
               accept=".pdf,.doc,.docx,.xls,.xlsx"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFile(e.target.files?.[0])}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => handleFile(e.target.files?.[0])}
             />
           </div>
         </div>
@@ -448,20 +453,76 @@ function VersionModal({ mode, suggestedVersion, initialData = null, onConfirm, o
       </div>
     </div>
   );
-}
+};
 
 // ── DeleteVersionModal ────────────────────────────────────────────────────────
 
 interface DeleteVersionModalProps {
-  version: DocumentVersion;
+  version: Version;
   onConfirm: () => void;
   onClose: () => void;
 }
 
-function DeleteVersionModal({ version, onConfirm, onClose }: DeleteVersionModalProps) {
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>): void => {
+const DeleteVersionModal: React.FC<DeleteVersionModalProps> = ({ version, onConfirm, onClose }) => {
+  const handleBackdropClick = (e: MouseEvent<HTMLDivElement>): void => {
     if (e.target === e.currentTarget) onClose();
   };
+
+  return (
+    <div className="dm-modal-backdrop" onClick={handleBackdropClick}>
+      <div className="dm-modal dm-modal-delete">
+        <div className="dm-modal-header dm-modal-header-danger">
+          <div className="dm-modal-header-left">
+            <div className="dm-modal-icon dm-modal-icon-danger"><IconAlertTriangle size={18} /></div>
+            <div>
+              <h3 className="dm-modal-title">Excluir versão</h3>
+              <p className="dm-modal-subtitle">Esta ação não pode ser desfeita</p>
+            </div>
+          </div>
+          <button className="dm-modal-close" onClick={onClose}><IconX size={16} /></button>
+        </div>
+        <div className="dm-modal-body dm-delete-modal-body">
+          <div className="dm-delete-version-preview">
+            <div className="dm-delete-version-icon"><IconFileText size={18} /></div>
+            <div className="dm-delete-version-info">
+              <span className="dm-delete-version-label">versão {version.version}</span>
+              {version.name && <span className="dm-delete-version-name">"{version.name}"</span>}
+              {version.fileName && <span className="dm-delete-version-file"><IconFile size={11} />{version.fileName}</span>}
+              <span className="dm-delete-version-date">{version.timelineLabel}</span>
+            </div>
+          </div>
+          <p className="dm-delete-warning-text">
+            Tem certeza que deseja excluir permanentemente a{" "}
+            <strong>versão {version.version}</strong>? Todo o histórico e arquivos
+            associados a esta versão serão removidos e não poderão ser recuperados.
+          </p>
+        </div>
+        <div className="dm-modal-footer">
+          <button className="dm-modal-cancel" onClick={onClose}>Cancelar</button>
+          <button className="dm-modal-confirm dm-modal-confirm-danger" onClick={onConfirm}>
+            <IconTrash size={14} />
+            Excluir versão
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── DeleteDocumentModal ───────────────────────────────────────────────────────
+
+interface DeleteDocumentModalProps {
+  document: Document;
+  onConfirm: () => void;
+  onClose: () => void;
+}
+
+const DeleteDocumentModal: React.FC<DeleteDocumentModalProps> = ({ document, onConfirm, onClose }) => {
+  const handleBackdropClick = (e: MouseEvent<HTMLDivElement>): void => {
+    if (e.target === e.currentTarget) onClose();
+  };
+
+  const latestVersion = getLatestVersion(document.versions);
 
   return (
     <div className="dm-modal-backdrop" onClick={handleBackdropClick}>
@@ -472,50 +533,51 @@ function DeleteVersionModal({ version, onConfirm, onClose }: DeleteVersionModalP
               <IconAlertTriangle size={18} />
             </div>
             <div>
-              <h3 className="dm-modal-title">Excluir versão</h3>
+              <h3 className="dm-modal-title">Excluir documento</h3>
               <p className="dm-modal-subtitle">Esta ação não pode ser desfeita</p>
             </div>
           </div>
-          <button className="dm-modal-close" onClick={onClose} aria-label="Fechar modal">
-            <IconX size={16} />
-          </button>
+          <button className="dm-modal-close" onClick={onClose}><IconX size={16} /></button>
         </div>
 
         <div className="dm-modal-body dm-delete-modal-body">
-          <div className="dm-delete-version-preview">
-            <div className="dm-delete-version-icon"><IconFileText size={18} /></div>
-            <div className="dm-delete-version-info">
-              <span className="dm-delete-version-label">versão {version.version}</span>
-              {version.name && <span className="dm-delete-version-name">"{version.name}"</span>}
-              {version.fileName && (
-                <span className="dm-delete-version-file">
-                  <IconFile size={11} />{version.fileName}
+          <div className="dm-delete-doc-preview">
+            <div className="dm-delete-doc-icon">
+              <IconFileText size={20} />
+            </div>
+            <div className="dm-delete-doc-info">
+              <span className="dm-delete-doc-title">{document.title}</span>
+              <span className="dm-delete-doc-code">{document.code}</span>
+              <div className="dm-delete-doc-meta">
+                <span className="dm-delete-doc-versions">
+                  {document.versions.length} {document.versions.length === 1 ? "versão" : "versões"} · v{latestVersion.version} mais recente
                 </span>
-              )}
-              <span className="dm-delete-version-date">{version.timelineLabel}</span>
+              </div>
             </div>
           </div>
+
           <p className="dm-delete-warning-text">
-            Tem certeza que deseja excluir permanentemente a{" "}
-            <strong>versão {version.version}</strong>? Todo o histórico e arquivos
-            associados a esta versão serão removidos e não poderão ser recuperados.
+            Tem certeza que deseja excluir permanentemente o documento{" "}
+            <strong>{document.title}</strong>? Todas as versões, arquivos e histórico
+            associados serão removidos e não poderão ser recuperados.
           </p>
         </div>
 
         <div className="dm-modal-footer">
           <button className="dm-modal-cancel" onClick={onClose}>Cancelar</button>
           <button className="dm-modal-confirm dm-modal-confirm-danger" onClick={onConfirm}>
-            <IconTrash size={14} />Excluir versão
+            <IconTrash size={14} />
+            Excluir documento
           </button>
         </div>
       </div>
     </div>
   );
-}
+};
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-export default function DocumentManagement() {
+const DocumentManagement: React.FC = () => {
   const [search, setSearch] = useState<string>("");
   const [filterDept, setFilterDept] = useState<string>("all");
   const [filterSystem, setFilterSystem] = useState<string>("all");
@@ -538,9 +600,56 @@ export default function DocumentManagement() {
   const [editingSystems, setEditingSystems] = useState<boolean>(false);
   const [editingSystemsValue, setEditingSystemsValue] = useState<string[]>([]);
 
+  // Version search
+  const [versionSearch, setVersionSearch] = useState<string>("");
+
   // Modal state
   const [versionModal, setVersionModal] = useState<VersionModalState | null>(null);
-  const [deleteVersionTarget, setDeleteVersionTarget] = useState<DocumentVersion | null>(null);
+  const [deleteVersionTarget, setDeleteVersionTarget] = useState<Version | null>(null);
+
+  // Delete document modal
+  const [deleteDocumentTarget, setDeleteDocumentTarget] = useState<Document | null>(null);
+
+  useEffect(() => {
+    function handlePolicyAdded(e: Event) {
+      const data = (e as CustomEvent<PolicyFormData>).detail;
+
+      const now = new Date();
+      const timeLabel = `${now.getHours().toString().padStart(2, "0")}:${now
+        .getMinutes()
+        .toString()
+        .padStart(2, "0")}`;
+
+      const newDoc: Document = {
+        id: Date.now(),
+        title: data.file
+          ? data.file.name.replace(/\.[^.]+$/, "")
+          : "Novo Documento",
+        code: `POL-${now.getFullYear()}-${String(
+          Math.floor(Math.random() * 900) + 100
+        )}`,
+        updatedLabel: "Adicionado agora",
+        departments: data.departmentIds.map((id) => DEP_MAP[id] ?? id),
+        systems: data.systemIds.map((id) => SYS_MAP[id] ?? id),
+        versions: [
+          {
+            id: Date.now() + 1,
+            version: "1.0",
+            timelineLabel: `Hoje, ${timeLabel}`,
+            isActive: true,
+            status: "approved",
+            name: "Versão inicial",
+            fileName: data.file?.name ?? null,
+          },
+        ],
+      };
+
+      setDocuments((prev) => [newDoc, ...prev]);
+    }
+
+    window.addEventListener("policy:added", handlePolicyAdded);
+    return () => window.removeEventListener("policy:added", handlePolicyAdded);
+  }, []);
 
   const allDepartments = useMemo<string[]>(
     () => Array.from(new Set(documents.flatMap((d) => d.departments))).sort(),
@@ -555,8 +664,7 @@ export default function DocumentManagement() {
   const filteredDocuments = useMemo<Document[]>(() => {
     const term = search.trim().toLowerCase();
     return documents.filter((doc) => {
-      const matchesSearch =
-        !term ||
+      const matchesSearch = !term ||
         doc.title.toLowerCase().includes(term) ||
         doc.code.toLowerCase().includes(term) ||
         doc.departments.some((d) => d.toLowerCase().includes(term)) ||
@@ -572,11 +680,25 @@ export default function DocumentManagement() {
     [documents, selectedDocumentId]
   );
 
+  const filteredVersions = useMemo<Version[]>(() => {
+    if (!selectedDocument) return [];
+    const term = versionSearch.trim().toLowerCase();
+    if (!term) return selectedDocument.versions;
+    return selectedDocument.versions.filter((v) =>
+      v.version.toLowerCase().includes(term) ||
+      v.name.toLowerCase().includes(term) ||
+      (v.fileName && v.fileName.toLowerCase().includes(term)) ||
+      v.timelineLabel.toLowerCase().includes(term) ||
+      v.status.toLowerCase().includes(term)
+    );
+  }, [selectedDocument, versionSearch]);
+
   // ── Title editing ──────────────────────────────────────────────────────────
 
   const handleOpenDocument = (documentId: number): void => {
     setSelectedDocumentId(documentId);
     setIsEditingTitle(false);
+    setVersionSearch("");
   };
 
   const handleStartEditTitle = (): void => {
@@ -591,22 +713,20 @@ export default function DocumentManagement() {
     if (!trimmed || !selectedDocument) { setIsEditingTitle(false); return; }
     setDocuments((prev) =>
       prev.map((doc) =>
-        doc.id === selectedDocument.id
-          ? { ...doc, title: trimmed, updatedLabel: "Atualizado agora" }
-          : doc
+        doc.id === selectedDocument.id ? { ...doc, title: trimmed, updatedLabel: "Atualizado agora" } : doc
       )
     );
     setIsEditingTitle(false);
   };
 
-  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+  const handleTitleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === "Enter") handleSaveTitle();
     if (e.key === "Escape") setIsEditingTitle(false);
   };
 
   // ── Card editing ───────────────────────────────────────────────────────────
 
-  const handleStartEditCard = (e: React.MouseEvent, doc: Document): void => {
+  const handleStartEditCard = (e: MouseEvent, doc: Document): void => {
     e.stopPropagation();
     setEditingCardId(doc.id);
     setEditingCardTitle(doc.title);
@@ -620,42 +740,53 @@ export default function DocumentManagement() {
     if (trimmedTitle) {
       setDocuments((prev) =>
         prev.map((doc) =>
-          doc.id === docId
-            ? {
-                ...doc,
-                title: trimmedTitle,
-                departments: editingCardDepts.length > 0 ? editingCardDepts : doc.departments,
-                systems: editingCardSystems.length > 0 ? editingCardSystems : doc.systems,
-                updatedLabel: "Atualizado agora",
-              }
-            : doc
+          doc.id === docId ? {
+            ...doc,
+            title: trimmedTitle,
+            departments: editingCardDepts.length > 0 ? editingCardDepts : doc.departments,
+            systems: editingCardSystems.length > 0 ? editingCardSystems : doc.systems,
+            updatedLabel: "Atualizado agora",
+          } : doc
         )
       );
     }
     setEditingCardId(null);
   };
 
-  const handleCardTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, docId: number): void => {
+  const handleCardTitleKeyDown = (e: KeyboardEvent<HTMLInputElement>, docId: number): void => {
     if (e.key === "Enter") handleSaveCardTitle(docId);
     if (e.key === "Escape") setEditingCardId(null);
   };
 
-  // ── Version modal handlers ─────────────────────────────────────────────────
+  // ── Delete document ────────────────────────────────────────────────────────
 
-  const handleOpenCreateModal = (): void => {
-    setVersionModal({ mode: "create" });
+  const handleRequestDeleteDocument = (e: MouseEvent, doc: Document): void => {
+    e.stopPropagation();
+    setDeleteDocumentTarget(doc);
   };
 
-  const handleOpenEditModal = (e: React.MouseEvent, version: DocumentVersion): void => {
+  const handleConfirmDeleteDocument = (): void => {
+    if (!deleteDocumentTarget) return;
+    setDocuments((prev) => prev.filter((d) => d.id !== deleteDocumentTarget.id));
+    setDeleteDocumentTarget(null);
+    if (selectedDocumentId === deleteDocumentTarget.id) {
+      setSelectedDocumentId(null);
+    }
+  };
+
+  // ── Version modal handlers ─────────────────────────────────────────────────
+
+  const handleOpenCreateModal = (): void => setVersionModal({ mode: "create" });
+
+  const handleOpenEditModal = (e: MouseEvent, version: Version): void => {
     e.stopPropagation();
     setVersionModal({ mode: "edit", version });
   };
 
   const handleCloseVersionModal = (): void => setVersionModal(null);
 
-  const handleConfirmVersionModal = ({ versionNumber, versionName, fileName, versionId }: VersionModalPayload): void => {
+  const handleConfirmVersionModal = ({ versionNumber, versionName, fileName, versionId }: VersionModalConfirmPayload): void => {
     if (!selectedDocument) return;
-
     if (versionModal?.mode === "edit" && versionId != null) {
       setDocuments((prev) =>
         prev.map((doc) => {
@@ -664,9 +795,7 @@ export default function DocumentManagement() {
             ...doc,
             updatedLabel: "Atualizado agora",
             versions: doc.versions.map((v) =>
-              v.id === versionId
-                ? { ...v, version: versionNumber, name: versionName, fileName }
-                : v
+              v.id === versionId ? { ...v, version: versionNumber, name: versionName, fileName } : v
             ),
           };
         })
@@ -675,7 +804,7 @@ export default function DocumentManagement() {
       setDocuments((prev) =>
         prev.map((doc) => {
           if (doc.id !== selectedDocument.id) return doc;
-          const newVersions: DocumentVersion[] = [
+          const newVersions: Version[] = [
             {
               id: Date.now(),
               version: versionNumber,
@@ -685,19 +814,18 @@ export default function DocumentManagement() {
               isActive: true,
               status: "approved",
             },
-            ...doc.versions.map((v) => ({ ...v, isActive: false, status: "published" as VersionStatus })),
+            ...doc.versions.map((v) => ({ ...v, isActive: false, status: "published" as const })),
           ];
           return { ...doc, updatedLabel: "Atualizado agora", versions: newVersions };
         })
       );
     }
-
     setVersionModal(null);
   };
 
   // ── Delete version ─────────────────────────────────────────────────────────
 
-  const handleRequestDeleteVersion = (e: React.MouseEvent, version: DocumentVersion): void => {
+  const handleRequestDeleteVersion = (e: MouseEvent, version: Version): void => {
     e.stopPropagation();
     if (!selectedDocument) return;
     if (selectedDocument.versions.length <= 1 || version.isActive) return;
@@ -728,7 +856,7 @@ export default function DocumentManagement() {
           versions: doc.versions.map((v) => ({
             ...v,
             isActive: v.id === versionId,
-            status: (v.id === versionId ? "approved" : "published") as VersionStatus,
+            status: (v.id === versionId ? "approved" : "published") as Version["status"],
           })),
         }
       )
@@ -743,7 +871,7 @@ export default function DocumentManagement() {
           ...doc,
           updatedLabel: "Atualizado agora",
           versions: doc.versions.map((v) =>
-            v.id === versionId ? { ...v, isActive: false, status: "published" as VersionStatus } : v
+            v.id === versionId ? { ...v, isActive: false, status: "published" as const } : v
           ),
         }
       )
@@ -902,14 +1030,15 @@ export default function DocumentManagement() {
 
     .dm-doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; align-items: stretch; }
 
+    /* Card — layout em coluna com footer fixo no fundo */
     .dm-doc-card {
-      border-radius: 16px; padding: 14px 16px 12px;
+      border-radius: 16px; padding: 14px 16px 0;
       display: flex; flex-direction: column;
       background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)), linear-gradient(180deg, #171d29 0%, #141a25 100%);
       border: 1px solid #232a39;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), 0 10px 24px rgba(0,0,0,0.18);
       transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-      cursor: pointer; gap: 0;
+      cursor: pointer; gap: 0; overflow: hidden;
     }
     .dm-doc-card:hover { transform: translateY(-2px); border-color: rgba(66, 120, 255, 0.35); box-shadow: inset 0 1px 0 rgba(255,255,255,0.025), 0 14px 30px rgba(0,0,0,0.22); outline: none; }
 
@@ -917,6 +1046,9 @@ export default function DocumentManagement() {
     .dm-doc-icon-dept { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; }
     .dm-doc-dept-label { font-size: 11px; font-weight: 600; color: #c084fc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
     .dm-doc-icon { width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; color: #5e86ff; background: rgba(47, 95, 255, 0.08); border: 1px solid rgba(94, 134, 255, 0.12); flex-shrink: 0; }
+
+    /* Botões de ação do card (editar) */
+    .dm-doc-card-top-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 
     .dm-page .dm-card-edit-btn {
       width: 26px; height: 26px; border-radius: 7px;
@@ -927,13 +1059,22 @@ export default function DocumentManagement() {
     .dm-doc-card:hover .dm-card-edit-btn { opacity: 1; }
     .dm-page .dm-card-edit-btn:hover { background: rgba(255,255,255,0.07); border-color: var(--dm-border); color: #c5cdd9; }
 
-    .dm-doc-body { flex: 1; }
+    .dm-doc-body { flex: 1; padding-bottom: 8px; }
     .dm-doc-body h3 { margin: 0 0 3px; font-size: 14px; font-weight: 700; color: #f6f8fd; line-height: 1.3; }
     .dm-doc-code { display: inline-block; font-size: 11px; color: #919bad; margin-bottom: 10px; }
 
     .dm-doc-meta-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; margin-bottom: 6px; }
     .dm-meta-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 6px; font-size: 10.5px; font-weight: 500; white-space: nowrap; }
     .dm-meta-chip-sys { background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.16); color: #4ade80; }
+    /* ── NOVO: badge de overflow "+N" ── */
+    .dm-meta-chip-more {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #737d8f;
+      font-weight: 700;
+      cursor: default;
+      letter-spacing: 0.01em;
+    }
 
     .dm-doc-version-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
     .dm-version-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
@@ -941,7 +1082,29 @@ export default function DocumentManagement() {
     .dm-version-pill-active { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); color: #4ade80; }
     .dm-version-pill-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.7; flex-shrink: 0; }
 
-    .dm-doc-footer { margin-top: 8px; text-align: right; font-size: 11px; color: #8e97a8; }
+    /* Footer do card com update label e botão de lixeira */
+    .dm-doc-card-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0 12px; margin-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+    .dm-doc-footer-label { font-size: 11px; color: #8e97a8; }
+
+    /* Botão lixeira do card */
+    .dm-page .dm-card-delete-btn {
+      width: 26px; height: 26px; border-radius: 7px;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: #6b778c; background: transparent; border: 1px solid transparent;
+      cursor: pointer; opacity: 0;
+      transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+      flex-shrink: 0;
+    }
+    .dm-doc-card:hover .dm-card-delete-btn { opacity: 1; }
+    .dm-page .dm-card-delete-btn:hover {
+      background: rgba(255, 60, 60, 0.12);
+      border-color: rgba(255, 80, 80, 0.25);
+      color: #ff6b6b;
+    }
 
     .dm-empty-state {
       min-height: 180px; grid-column: 1 / -1; border-radius: 16px;
@@ -1032,6 +1195,74 @@ export default function DocumentManagement() {
     .dm-info-version-active { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); color: #4ade80; }
     .dm-info-version-none { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #737d8f; }
 
+    .dm-version-toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+    }
+    .dm-version-toolbar-left { display: flex; align-items: center; gap: 10px; }
+    .dm-version-section-label {
+      font-size: 12px; font-weight: 600; color: #737d8f;
+      letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
+    }
+
+    .dm-version-search {
+      position: relative; height: 36px; display: flex; align-items: center; gap: 9px;
+      padding: 0 12px; border-radius: 10px;
+      border: 1px solid var(--dm-border);
+      background: linear-gradient(180deg, #111722 0%, #10161f 100%);
+      color: #94a0b2;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+      width: 200px;
+    }
+    .dm-version-search:focus-within {
+      border-color: rgba(88,125,255,0.55);
+      box-shadow: 0 0 0 3px rgba(47,95,255,0.10);
+    }
+    .dm-version-search input {
+      flex: 1; border: none; background: transparent;
+      color: var(--dm-text); font-size: 12.5px;
+    }
+    .dm-version-search input::placeholder { color: #555e70; }
+    .dm-page .dm-version-search-clear {
+      width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: #6b778c; cursor: pointer;
+      transition: color 0.12s ease, background 0.12s ease;
+    }
+    .dm-page .dm-version-search-clear:hover { color: #c5cdd9; background: rgba(255,255,255,0.08); }
+
+    .dm-version-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 10px; padding: 36px 20px; text-align: center;
+      border: 1px dashed rgba(255,255,255,0.07); border-radius: 16px;
+      background: rgba(255,255,255,0.012);
+    }
+    .dm-version-empty-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: #7282a0; background: rgba(255,255,255,0.03);
+    }
+    .dm-version-empty h4 { margin: 0; font-size: 14px; color: #d8dff0; font-weight: 600; }
+    .dm-version-empty p { margin: 0; font-size: 12px; color: #737d8f; line-height: 1.5; }
+    .dm-page .dm-version-empty-reset {
+      height: 30px; padding: 0 12px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04);
+      color: #a4adbc; font-size: 12px; font-weight: 500; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: background 0.15s ease;
+    }
+    .dm-page .dm-version-empty-reset:hover { background: rgba(255,255,255,0.08); }
+
+    .dm-version-count-badge {
+      height: 20px; padding: 0 7px; border-radius: 999px;
+      display: inline-flex; align-items: center;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+      color: #737d8f; font-size: 10.5px; font-weight: 600;
+    }
+    .dm-version-count-badge.filtered {
+      background: rgba(47,95,255,0.14); border-color: rgba(72,114,255,0.22); color: #7ea0ff;
+    }
+
     .dm-page .dm-version-create-btn {
       height: 40px; padding: 0 14px; border-radius: 10px;
       border: 1px solid rgba(71, 115, 255, 0.35);
@@ -1087,6 +1318,22 @@ export default function DocumentManagement() {
     .dm-title-input { font-size: 1.6rem; font-weight: 700; color: #f4f7ff; background: rgba(255,255,255,0.06); border: 1px solid rgba(88,125,255,0.5); border-radius: 8px; padding: 2px 10px; outline: none; min-width: 0; width: 100%; box-shadow: 0 0 0 3px rgba(47,95,255,0.12); letter-spacing: -0.02em; }
     .dm-page .dm-title-save-btn { width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #3268ff 0%, #2a5cff 100%); color: #fff; border: none; cursor: pointer; flex-shrink: 0; transition: filter 0.2s ease; }
     .dm-page .dm-title-save-btn:hover { filter: brightness(1.1); }
+
+    /* Modal de exclusão de documento */
+    .dm-delete-doc-preview {
+      display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+      border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    }
+    .dm-delete-doc-icon {
+      width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.18);
+    }
+    .dm-delete-doc-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .dm-delete-doc-title { font-size: 15px; font-weight: 700; color: #f4f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dm-delete-doc-code { font-size: 11px; color: #737d8f; }
+    .dm-delete-doc-meta { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+    .dm-delete-doc-versions { font-size: 11px; color: #8c95a6; }
 
     .dm-modal-backdrop {
       position: fixed; inset: 0; z-index: 1000;
@@ -1174,7 +1421,9 @@ export default function DocumentManagement() {
       .dm-content-head { flex-direction: column; align-items: stretch; }
       .dm-search { flex: 1; width: auto; }
       .dm-detail-hero { flex-direction: column; align-items: stretch; }
+      .dm-version-toolbar { flex-direction: column; align-items: stretch; }
       .dm-version-create-btn { width: 100%; justify-content: center; }
+      .dm-version-search { width: 100%; }
     }
     @media (max-width: 600px) {
       .dm-main-topbar { padding: 0 16px; }
@@ -1186,6 +1435,9 @@ export default function DocumentManagement() {
       .dm-modal { border-radius: 16px; }
     }
   `;
+
+  const isVersionSearchActive = versionSearch.trim().length > 0;
+  const displayedVersions = filteredVersions;
 
   return (
     <div className="dm-page">
@@ -1216,13 +1468,17 @@ export default function DocumentManagement() {
                       type="text"
                       placeholder="Pesquisar..."
                       value={search}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
                     />
                   </label>
 
                   <div className={`dm-filter-wrap${filterDept !== "all" ? " active" : ""}`}>
                     <IconBuilding size={13} />
-                    <select className="dm-filter-select" value={filterDept} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterDept(e.target.value)}>
+                    <select
+                      className="dm-filter-select"
+                      value={filterDept}
+                      onChange={(e: ChangeEvent<HTMLSelectElement>) => setFilterDept(e.target.value)}
+                    >
                       <option value="all">Todos os depto.</option>
                       {allDepartments.map((d) => <option key={d} value={d}>{d}</option>)}
                     </select>
@@ -1231,7 +1487,11 @@ export default function DocumentManagement() {
 
                   <div className={`dm-filter-wrap${filterSystem !== "all" ? " active" : ""}`}>
                     <IconCpu size={13} />
-                    <select className="dm-filter-select" value={filterSystem} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterSystem(e.target.value)}>
+                    <select
+                      className="dm-filter-select"
+                      value={filterSystem}
+                      onChange={(e: ChangeEvent<HTMLSelectElement>) => setFilterSystem(e.target.value)}
+                    >
                       <option value="all">Todos os sistemas</option>
                       {allSystems.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
@@ -1239,8 +1499,13 @@ export default function DocumentManagement() {
                   </div>
 
                   {(filterDept !== "all" || filterSystem !== "all" || search) && (
-                    <button className="dm-clear-filters-btn" onClick={() => { setFilterDept("all"); setFilterSystem("all"); setSearch(""); }}>
-                      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <button
+                      className="dm-clear-filters-btn"
+                      onClick={() => { setFilterDept("all"); setFilterSystem("all"); setSearch(""); }}
+                    >
+                      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
                       Limpar
                     </button>
                   )}
@@ -1256,13 +1521,12 @@ export default function DocumentManagement() {
                       className="dm-doc-card"
                       key={doc.id}
                       onClick={() => editingCardId !== doc.id && handleOpenDocument(doc.id)}
-                      onKeyDown={(e: React.KeyboardEvent) => {
+                      onKeyDown={(e: KeyboardEvent<HTMLElement>) => {
                         if (editingCardId === doc.id) return;
                         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleOpenDocument(doc.id); }
                       }}
                       role="button"
                       tabIndex={0}
-                      aria-label={`Abrir documento ${doc.title}`}
                     >
                       <div className="dm-doc-card-top">
                         <div className="dm-doc-icon-dept">
@@ -1271,21 +1535,23 @@ export default function DocumentManagement() {
                             {doc.departments[0]}{doc.departments.length > 1 ? ` +${doc.departments.length - 1}` : ""}
                           </span>
                         </div>
-                        <button className="dm-card-edit-btn" onClick={(e) => handleStartEditCard(e, doc)} aria-label={`Editar ${doc.title}`}>
-                          <IconEdit size={13} />
-                        </button>
+                        <div className="dm-doc-card-top-actions">
+                          <button className="dm-card-edit-btn" onClick={(e: MouseEvent) => handleStartEditCard(e, doc)} title="Editar documento">
+                            <IconEdit size={13} />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="dm-doc-body">
                         {editingCardId === doc.id ? (
-                          <div className="dm-card-edit-wrap" onClick={(e) => e.stopPropagation()}>
+                          <div className="dm-card-edit-wrap" onClick={(e: MouseEvent) => e.stopPropagation()}>
                             <input
                               ref={cardInputRef}
                               className="dm-card-title-input"
                               value={editingCardTitle}
                               placeholder="Nome do documento"
-                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingCardTitle(e.target.value)}
-                              onKeyDown={(e) => handleCardTitleKeyDown(e, doc.id)}
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => setEditingCardTitle(e.target.value)}
+                              onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => handleCardTitleKeyDown(e, doc.id)}
                               autoFocus
                             />
                             <div className="dm-card-edit-row">
@@ -1309,9 +1575,20 @@ export default function DocumentManagement() {
                         <span className="dm-doc-code">{doc.code}</span>
                         {editingCardId !== doc.id && (
                           <div className="dm-doc-meta-tags">
-                            {doc.systems.map((s) => (
-                              <span key={s} className="dm-meta-chip dm-meta-chip-sys"><IconCpu size={11} />{s}</span>
+                            {/* ── Mostra no máximo 2 sistemas; se houver mais exibe badge "+N" ── */}
+                            {doc.systems.slice(0, 2).map((s) => (
+                              <span key={s} className="dm-meta-chip dm-meta-chip-sys">
+                                <IconCpu size={11} />{s}
+                              </span>
                             ))}
+                            {doc.systems.length > 2 && (
+                              <span
+                                className="dm-meta-chip dm-meta-chip-more"
+                                title={doc.systems.slice(2).join(", ")}
+                              >
+                                +{doc.systems.length - 2}
+                              </span>
+                            )}
                           </div>
                         )}
                         <div className="dm-doc-version-row">
@@ -1329,7 +1606,18 @@ export default function DocumentManagement() {
                           )}
                         </div>
                       </div>
-                      <div className="dm-doc-footer">{doc.updatedLabel}</div>
+
+                      {/* Footer com label de atualização e botão de lixeira */}
+                      <div className="dm-doc-card-footer" onClick={(e: MouseEvent) => e.stopPropagation()}>
+                        <span className="dm-doc-footer-label">{doc.updatedLabel}</span>
+                        <button
+                          className="dm-card-delete-btn"
+                          onClick={(e: MouseEvent) => handleRequestDeleteDocument(e, doc)}
+                          title="Excluir documento"
+                        >
+                          <IconTrash size={13} />
+                        </button>
+                      </div>
                     </article>
                   );
                 }) : (
@@ -1358,7 +1646,7 @@ export default function DocumentManagement() {
                           ref={titleInputRef}
                           className="dm-title-input"
                           value={editingTitle}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingTitle(e.target.value)}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => setEditingTitle(e.target.value)}
                           onKeyDown={handleTitleKeyDown}
                           onBlur={handleSaveTitle}
                           autoFocus
@@ -1378,11 +1666,6 @@ export default function DocumentManagement() {
                     </div>
                   </div>
                 </div>
-
-                <button className="dm-version-create-btn" onClick={handleOpenCreateModal}>
-                  <IconPlus size={16} />
-                  <span>Criar nova versão</span>
-                </button>
               </div>
 
               {(() => {
@@ -1408,7 +1691,9 @@ export default function DocumentManagement() {
                               <span key={d} className="dm-info-tag dm-info-tag-dept">{d}</span>
                             ))}
                           </div>
-                          <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                          <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+                          </svg>
                         </button>
                       )}
                     </div>
@@ -1433,7 +1718,9 @@ export default function DocumentManagement() {
                               <span key={s} className="dm-info-tag dm-info-tag-sys">{s}</span>
                             ))}
                           </div>
-                          <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                          <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+                          </svg>
                         </button>
                       )}
                     </div>
@@ -1459,75 +1746,121 @@ export default function DocumentManagement() {
                 );
               })()}
 
-              <div className="dm-version-scroll">
-                <div className="dm-version-timeline-wrap" style={getVersionGridStyle(selectedDocument.versions.length)}>
-                  <div className="dm-version-track-line" />
-                  {selectedDocument.versions.map((version) => (
-                    <div className="dm-timeline-item" key={version.id}>
-                      <div className="dm-timeline-date">{version.timelineLabel}</div>
-                      <div className={`dm-timeline-marker ${version.isActive ? "active" : ""}`}>
-                        {version.isActive ? <IconCheck size={12} /> : <IconFileText size={11} />}
-                      </div>
-                    </div>
-                  ))}
+              <div className="dm-version-toolbar">
+                <div className="dm-version-toolbar-left">
+                  <span className="dm-version-section-label">Versões</span>
+                  <span className={`dm-version-count-badge${isVersionSearchActive ? " filtered" : ""}`}>
+                    {isVersionSearchActive
+                      ? `${displayedVersions.length} de ${selectedDocument.versions.length}`
+                      : selectedDocument.versions.length}
+                  </span>
+
+                  <label className="dm-version-search">
+                    <IconSearch size={13} />
+                    <input
+                      type="text"
+                      placeholder="Buscar versão..."
+                      value={versionSearch}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setVersionSearch(e.target.value)}
+                    />
+                    {isVersionSearchActive && (
+                      <button
+                        className="dm-version-search-clear"
+                        onClick={() => setVersionSearch("")}
+                        aria-label="Limpar busca"
+                      >
+                        <IconX size={11} />
+                      </button>
+                    )}
+                  </label>
                 </div>
 
-                <div className="dm-version-cards" style={getVersionGridStyle(selectedDocument.versions.length)}>
-                  {selectedDocument.versions.map((version) => {
-                    const canDelete = !version.isActive && selectedDocument.versions.length > 1;
-                    return (
-                      <article className={`dm-version-card ${version.isActive ? "active" : ""}`} key={version.id}>
-                        <div className="dm-version-card-head">
-                          <div className="dm-version-card-copy">
-                            <h3>versão {version.version}<span>Publicada</span></h3>
-                            {version.name && <div className="dm-version-card-name">"{version.name}"</div>}
-                            {version.fileName && (
-                              <div className="dm-version-card-file">
-                                <IconFile size={11} />{version.fileName}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="dm-version-card-actions">
-                            {version.status === "approved" && (
-                              <span className="dm-version-approved-badge">APROVADO</span>
-                            )}
-                            <button
-                              className="dm-version-icon-btn"
-                              onClick={(e) => handleOpenEditModal(e, version)}
-                              title="Editar versão"
-                            >
-                              <IconEdit size={12} />
-                            </button>
-                            <button
-                              className="dm-version-icon-btn dm-version-icon-btn-danger"
-                              onClick={(e) => handleRequestDeleteVersion(e, version)}
-                              disabled={!canDelete}
-                              title={version.isActive ? "Não é possível excluir a versão ativa" : "Excluir versão"}
-                            >
-                              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="dm-version-card-spacer" />
-
-                        <div className="dm-version-card-footer">
-                          {version.isActive ? (
-                            <button className="dm-version-action dm-version-action-secondary" onClick={() => handleDeactivateVersion(version.id)}>
-                              <IconEyeOff size={16} /><span>Desativar versão</span>
-                            </button>
-                          ) : (
-                            <button className="dm-version-action dm-version-action-primary" onClick={() => handleActivateVersion(version.id)}>
-                              <IconPower size={16} /><span>Ativar versão</span>
-                            </button>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
+                <button className="dm-version-create-btn" onClick={handleOpenCreateModal}>
+                  <IconPlus size={16} />
+                  <span>Criar nova versão</span>
+                </button>
               </div>
+
+              {displayedVersions.length === 0 ? (
+                <div className="dm-version-empty">
+                  <div className="dm-version-empty-icon"><IconSearch size={18} /></div>
+                  <h4>Nenhuma versão encontrada</h4>
+                  <p>Não há versões que correspondam a "<strong>{versionSearch}</strong>".</p>
+                  <button className="dm-version-empty-reset" onClick={() => setVersionSearch("")}>
+                    <IconX size={11} /> Limpar busca
+                  </button>
+                </div>
+              ) : (
+                <div className="dm-version-scroll">
+                  <div className="dm-version-timeline-wrap" style={getVersionGridStyle(displayedVersions.length)}>
+                    <div className="dm-version-track-line" />
+                    {displayedVersions.map((version) => (
+                      <div className="dm-timeline-item" key={version.id}>
+                        <div className="dm-timeline-date">{version.timelineLabel}</div>
+                        <div className={`dm-timeline-marker ${version.isActive ? "active" : ""}`}>
+                          {version.isActive ? <IconCheck size={12} /> : <IconFileText size={11} />}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="dm-version-cards" style={getVersionGridStyle(displayedVersions.length)}>
+                    {displayedVersions.map((version) => {
+                      const canDelete = !version.isActive && selectedDocument.versions.length > 1;
+                      return (
+                        <article className={`dm-version-card ${version.isActive ? "active" : ""}`} key={version.id}>
+                          <div className="dm-version-card-head">
+                            <div className="dm-version-card-copy">
+                              <h3>versão {version.version}<span>Publicada</span></h3>
+                              {version.name && <div className="dm-version-card-name">"{version.name}"</div>}
+                              {version.fileName && (
+                                <div className="dm-version-card-file">
+                                  <IconFile size={11} />{version.fileName}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="dm-version-card-actions">
+                              {version.status === "approved" && (
+                                <span className="dm-version-approved-badge">APROVADO</span>
+                              )}
+                              <button
+                                className="dm-version-icon-btn"
+                                onClick={(e: MouseEvent) => handleOpenEditModal(e, version)}
+                                title="Editar versão"
+                              >
+                                <IconEdit size={12} />
+                              </button>
+                              <button
+                                className="dm-version-icon-btn dm-version-icon-btn-danger"
+                                onClick={(e: MouseEvent) => handleRequestDeleteVersion(e, version)}
+                                disabled={!canDelete}
+                                title={version.isActive ? "Não é possível excluir a versão ativa" : "Excluir versão"}
+                              >
+                                <IconTrash size={12} />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="dm-version-card-spacer" />
+
+                          <div className="dm-version-card-footer">
+                            {version.isActive ? (
+                              <button className="dm-version-action dm-version-action-secondary" onClick={() => handleDeactivateVersion(version.id)}>
+                                <IconEyeOff size={16} /><span>Desativar versão</span>
+                              </button>
+                            ) : (
+                              <button className="dm-version-action dm-version-action-primary" onClick={() => handleActivateVersion(version.id)}>
+                                <IconPower size={16} /><span>Ativar versão</span>
+                              </button>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -1541,7 +1874,7 @@ export default function DocumentManagement() {
               ? getNextVersionNumber(selectedDocument.versions)
               : undefined
           }
-          initialData={versionModal.mode === "edit" ? versionModal.version : null}
+          initialData={versionModal.mode === "edit" ? versionModal.version ?? null : null}
           onConfirm={handleConfirmVersionModal}
           onClose={handleCloseVersionModal}
         />
@@ -1554,6 +1887,16 @@ export default function DocumentManagement() {
           onClose={() => setDeleteVersionTarget(null)}
         />
       )}
+
+      {deleteDocumentTarget && (
+        <DeleteDocumentModal
+          document={deleteDocumentTarget}
+          onConfirm={handleConfirmDeleteDocument}
+          onClose={() => setDeleteDocumentTarget(null)}
+        />
+      )}
     </div>
   );
-}
+};
+
+export default DocumentManagement;
