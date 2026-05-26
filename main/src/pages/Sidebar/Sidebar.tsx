@@ -5,7 +5,6 @@ import {
   ChevronRight,
   FileText,
   Grid2X2,
-  History,
   KeyRound,
   Layers3,
   MessageSquare,
@@ -665,11 +664,6 @@ export default function Sidebar() {
                 <NavLink to="/admin/tokens" className="sidebar-admin-link">
                   <KeyRound size={17} strokeWidth={1.8} />
                   Gerenciamento de Tokens
-                </NavLink>
-
-                <NavLink to="/document-timeline" className="sidebar-admin-link">
-                  <History size={17} strokeWidth={1.8} />
-                  Timeline de Documentos
                 </NavLink>
               </nav>
             </section>

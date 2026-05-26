@@ -10,7 +10,6 @@ import AdminUsers from '../pages/AdminUsers/AdminUsers';
 import AdminDocuments from '../pages/AdminDocuments/AdminDocuments';
 import AdminDepartments, { AdminSystems } from '../pages/AdminCatalogs/AdminCatalogs';
 import AdminTokens from '../pages/AdminTokens/AdminTokens';
-import DocumentTimeline from '../pages/DocumentTimeline/DocumentTimeline';
 import ProfileEdit from '../pages/ProfileEdit/ProfileEdit';
 
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -101,14 +100,6 @@ export default function AppRoutes() {
           }
         />
 
-        <Route
-          path="document-timeline"
-          element={
-            <ProtectedRoute allowedRoles={['2']}>
-              <DocumentTimeline />
-            </ProtectedRoute>
-          }
-        />
       </Route>
 
       <Route path="*" element={<Navigate to="/chat" replace />} />
