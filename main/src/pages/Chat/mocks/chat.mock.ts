@@ -16,7 +16,7 @@ export const chatSystems = [
   'Portal de Governança',
 ];
 
-export const aiProviders: AiProvider[] = ['GPT', 'Claude', 'Gemini'];
+export const aiProviders: number[] = [1, 2, 3];
 
 const departmentKnowledge: Record<string, { content: string; sources: ChatSource[] }> = {
   'Governança / RH': {

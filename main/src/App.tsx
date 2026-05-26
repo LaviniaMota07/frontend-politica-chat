@@ -6,6 +6,7 @@ import AuthLayout from './layouts/AuthLayout';
 import Login from './pages/Login/Login';
 import Register from './pages/Register/Register';
 import Chat from './pages/Chat/Chat';
+import ChatRoom from './pages/Chat/ChatRoom';
 import AdminUsers from './pages/AdminUsers/AdminUsers';
 import AdminDocuments from './pages/AdminDocuments/AdminDocuments';
 import AdminDepartments, { AdminSystems } from './pages/AdminCatalogs/AdminCatalogs';
@@ -35,6 +36,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['1', '2']}>
               <Chat />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="chat/:chatId"
+          element={
+            <ProtectedRoute allowedRoles={['1', '2']}>
+              <ChatRoom />
             </ProtectedRoute>
           }
         />
