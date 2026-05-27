@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 import { useEffect, type Dispatch, type SetStateAction } from 'react'
 import { useFetch } from '../../../hooks/useFetch';
 import { useParams } from 'react-router-dom';
-import { cn } from '../../../utils/classNames';
+import { cn } from '@/lib/utils';
 
 export interface SharedUser {
     userNm: string;

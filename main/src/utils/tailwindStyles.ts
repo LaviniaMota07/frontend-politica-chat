@@ -130,7 +130,7 @@ export const chatStyles = {
 
 export const sidebarStyles = {
   aside:
-    'fixed left-3 top-3 z-40 flex h-[calc(100dvh-24px)] w-[280px] flex-col overflow-hidden rounded-[18px] border border-white/10 bg-[var(--sidebar-bg)] text-[var(--text-inverse)] shadow-[18px_0_50px_rgba(31,29,25,0.2)]',
+    'fixed left-3 top-3 z-40 flex h-[calc(100dvh-24px)] w-[320px] flex-col overflow-hidden rounded-[18px] border border-white/10 bg-[var(--sidebar-bg)] text-[var(--text-inverse)] shadow-[18px_0_50px_rgba(31,29,25,0.2)]',
   collapsed: 'w-[72px]',
   topIcons: 'flex min-h-[76px] items-center justify-between gap-2 px-3',
   iconButton:
@@ -146,6 +146,8 @@ export const sidebarStyles = {
   section: 'rounded-[1.25rem] border border-white/10 bg-[var(--sidebar-soft)] p-3',
   sectionHeader: 'flex items-center justify-between gap-3 text-[var(--text-inverse)]',
   sectionTitle: 'text-sm font-bold tracking-[-0.02em]',
+  newChatButton:
+    `flex w-full items-center gap-2 rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-bold text-[var(--text-inverse)] transition duration-200 hover:bg-[var(--accent-strong)] active:scale-[0.98] ${focusRing}`,
   addButton:
     'mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-3 text-xs font-bold text-[var(--text-inverse)] transition hover:border-[var(--accent)] hover:bg-[var(--accent)]',
   kicker: 'mb-3 text-[0.66rem] font-bold uppercase tracking-[0.18em] text-[var(--text-inverse)]/42',

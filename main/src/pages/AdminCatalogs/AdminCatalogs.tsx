@@ -15,7 +15,7 @@ import { AdminTable } from '../../components/admin/AdminTable';
 import { AdminPagination } from '../../components/admin/AdminPagination';
 import { AdminModal } from '../../components/admin/AdminModal';
 import { adminStyles, buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
-import { cn } from '../../utils/classNames';
+import { cn } from '@/lib/utils';
 
 const ITEMS_PER_PAGE = 4;
 

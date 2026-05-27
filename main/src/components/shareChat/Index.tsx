@@ -50,7 +50,6 @@ const ShareChat = ({ onClose }: ShareChatProps) => {
 
   async function handleSharedChat (formData:ShareChatFormData) {
     if (!chatId) {
-      console.error('chatId não encontrado')
       return
     }
 
@@ -89,8 +88,8 @@ const ShareChat = ({ onClose }: ShareChatProps) => {
         setValue('permission', 0)
         setInviteResetSignal((value) => value + 1)
       }
-    } catch (error) {
-      console.error('Erro ao compartilhar chat:', error)
+    } catch {
+      // handled by useFetch alert
     }
   }
 

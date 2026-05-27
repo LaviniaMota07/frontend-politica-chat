@@ -3,7 +3,7 @@ import { Share2 } from 'lucide-react';
 import ShareChat from '../../../components/shareChat/Index';
 import CreateChatModal from '../../../components/modalCreateChat/Index';
 import { buttonStyles, chatStyles } from '../../../utils/tailwindStyles';
-import { cn } from '../../../utils/classNames';
+import { cn } from '@/lib/utils';
 
 interface ChatHeaderProps {
   isConnected?: boolean;
@@ -46,7 +46,7 @@ export function ChatHeader({ isConnected, chatId }: ChatHeaderProps) {
           type="button"
           className={buttonStyles.primary}
           onClick={()=> setOpenCreateChat(true)}
-          title="Limpar conversa e iniciar uma nova"
+          title="Nova conversa"
         >
           Nova Conversa
         </button>

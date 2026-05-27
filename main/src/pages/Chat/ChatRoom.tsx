@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ChatHeader } from './components/ChatHeader';
 import { ChatInput } from './components/ChatInput';
 import { ChatMessages } from './components/ChatMessages';
 import { useChatAiProviders } from './hooks/useChatAiProviders';
@@ -34,7 +33,6 @@ export default function ChatRoom() {
     setInputValue,
     handleSendMessage,
     isSending,
-    isConnected,
     typingUsers,
     loadMoreMessages,
     hasMoreMessages,
@@ -54,11 +52,6 @@ export default function ChatRoom() {
   return (
     <main className={chatStyles.page} data-role={isAdmin ? 'admin' : 'user'}>
       <section className={chatStyles.main}>
-        <ChatHeader
-          isConnected={isConnected}
-          chatId={chatId}
-        />
-
         <div className={chatStyles.content}>
           <div className="flex h-full min-h-0 w-full flex-col">
             <ChatMessages

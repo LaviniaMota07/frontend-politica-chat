@@ -32,8 +32,7 @@ const InviteByEmail = ({ register, error, setValue, resetSignal = 0 }: InviteByE
           const res = await get(`/user/email/${inputValue}`) as UserSuggestion[];
           setSuggestions(res);
           setShowSuggestions(true);
-        } catch (error) {
-          console.error("Erro ao buscar usuários:", error);
+        } catch {
           setSuggestions([]);
         }
       } else {

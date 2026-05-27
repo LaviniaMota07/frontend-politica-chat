@@ -6,6 +6,7 @@ import {
   KeyRound,
   Layers3,
   Pencil,
+  Plus,
   ShieldCheck,
   Upload,
   UserCog,
@@ -17,7 +18,8 @@ import { useFetch } from '../../hooks/useFetch';
 import ChatMenu from './components/chat/Chat';
 import type { ChatListResponse } from '../../types/chat';
 import { buttonStyles, modalStyles, sidebarStyles } from '../../utils/tailwindStyles';
-import { cn } from '../../utils/classNames';
+import CreateChatModal from '../../components/modalCreateChat/Index';
+import { cn } from '@/lib/utils';
 
 
 // ---------------------------------------------------------------------------
@@ -165,6 +167,7 @@ export default function Sidebar() {
   const { user } = useAuth();
   const isAdmin = user.role === '1';
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [openCreateChat, setOpenCreateChat] = useState(false);
   const { get } = useFetch<ChatListResponse>();
 
   const handleGetMyChats = useCallback(async (lastChatId?: string): Promise<ChatListResponse> => {
@@ -197,6 +200,15 @@ export default function Sidebar() {
         </div>
 
         <div className={sidebarStyles.content}>
+          <button
+            type="button"
+            className={sidebarStyles.newChatButton}
+            onClick={() => setOpenCreateChat(true)}
+          >
+            <Plus size={16} strokeWidth={2.2} />
+            Nova Conversa
+          </button>
+
           <div className={sidebarStyles.divider} />
 
           <section className={sidebarStyles.section}>
@@ -285,6 +297,8 @@ export default function Sidebar() {
           onClose={() => setIsPolicyModalOpen(false)}
         />
       )}
+
+      <CreateChatModal isOpen={openCreateChat} onClose={() => setOpenCreateChat(false)} />
     </>
   );
 }

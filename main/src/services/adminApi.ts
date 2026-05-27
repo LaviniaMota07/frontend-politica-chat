@@ -42,10 +42,6 @@ export interface BackendModelIaKey {
   active: boolean;
 }
 
-export interface ScrollingResponse<T> {
-  data: T[];
-  finish: boolean;
-}
 
 export interface CatalogItem {
   id: number;

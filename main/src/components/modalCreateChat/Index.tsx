@@ -90,8 +90,8 @@ export default function CreateChatModal({ isOpen, onClose, chatId, initialTitle 
           notifyChatUpdated();
         }
       }
-    } catch (error) {
-      console.error(isEditMode ? 'Erro ao editar chat:' : 'Erro ao criar chat:', error);
+    } catch {
+      // handled by useFetch alert
     }
   };
 

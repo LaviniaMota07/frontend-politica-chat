@@ -1,7 +1,7 @@
 import { FileText } from 'lucide-react';
 import type { ChatMessage } from '../types/chat.types';
 import { formatTime } from '../utils/chat.helpers';
-import { cn } from '../../../utils/classNames';
+import { cn } from '@/lib/utils';
 
 interface ChatMessageBubbleProps {
   message: ChatMessage;

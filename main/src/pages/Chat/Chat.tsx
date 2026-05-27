@@ -3,7 +3,6 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFetch } from '../../hooks/useFetch';
-import { ChatHeader } from './components/ChatHeader';
 import { ChatInput } from './components/ChatInput';
 import { ChatWelcome } from './components/ChatWelcome';
 import { chatDepartments, chatSystems } from './mocks/chat.mock';
@@ -63,8 +62,6 @@ export default function Chat() {
   return (
     <main className={chatStyles.page} data-role={isAdmin ? 'admin' : 'user'}>
       <section className={chatStyles.main}>
-        <ChatHeader />
-
         <div className={chatStyles.content}>
           <ChatWelcome />
         </div>

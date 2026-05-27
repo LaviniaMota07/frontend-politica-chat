@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
-import toast from 'react-hot-toast';
 import { useSocketConnection } from './useSocketConnection';
 import { useChatMessages } from './useChatMessages';
 import { useChatTyping } from './useChatTyping';
@@ -68,14 +67,6 @@ export function useChat(
     };
   }, [chatId, isConnected, socketRef]);
 
-  const handleClearChat = () => {
-    if (socketRef.current) {
-      socketRef.current.emit('leave-chat', { chatId });
-    }
-    setMessages([]);
-    toast.success('Nova conversa iniciada!');
-  };
-
   return {
     messages,
     inputValue,
@@ -84,7 +75,6 @@ export function useChat(
     isSending,
     isConnected,
     typingUsers,
-    handleClearChat,
     loadMoreMessages,
     hasMoreMessages,
     isLoadingMore,

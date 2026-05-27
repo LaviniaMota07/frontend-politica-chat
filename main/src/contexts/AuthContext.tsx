@@ -17,8 +17,6 @@ interface AuthContextData {
   user: User;
   isAuthenticated: boolean;
   login: (userData: User) => void;
-  loginAsAdmin: () => void;
-  loginAsUser: () => void;
   updateProfile: (profile: Pick<User, 'name' | 'email'>) => void;
   logout: () => void;
 }
@@ -77,30 +75,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(normalizedUser));
   }
 
-  function loginAsAdmin() {
-    const mockUser: User = {
-      name: 'Admin',
-      email: 'admin@email.com',
-      role: '1',
-      userTypeId: '1',
-    };
-    setUser(mockUser);
-    setIsAuthenticated(true);
-    sessionStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(mockUser));
-  }
-
-  function loginAsUser() {
-    const mockUser: User = {
-      name: 'User',
-      email: 'user@email.com',
-      role: '2',
-      userTypeId: '2',
-    };
-    setUser(mockUser);
-    setIsAuthenticated(true);
-    sessionStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(mockUser));
-  }
-
   function updateProfile(profile: Pick<User, 'name' | 'email'>) {
     setUser((currentUser) => {
       const updated = {
@@ -117,8 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       isAuthenticated,
       login,
-      loginAsAdmin,
-      loginAsUser,
       updateProfile,
       logout,
     }),
