@@ -47,25 +47,25 @@ const SharedUsers = ({ sharedUsers, setSharedUsers }: SharedUsersProps) => {
     }, [chatId, get, setSharedUsers])
 
     return (
-        <section className="rounded-3xl border border-white/10 bg-[#0c1628] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
-            <h3 className="mb-4 text-lg font-black tracking-[-0.04em] text-slate-50">Pessoas com acesso</h3>
+        <section className="rounded-[20px] border border-[var(--border-neutral)] bg-[var(--bg-elevated)] p-5 shadow-[0_18px_50px_rgba(31,29,25,0.08)]">
+            <h3 className="mb-4 font-[var(--heading)] text-lg font-extrabold tracking-[-0.04em] text-[var(--text-primary)]">Pessoas com acesso</h3>
             <ul className="flex max-h-[520px] flex-col gap-3 overflow-y-auto">
                 {sharedUsers.map((user) => (
-                <li key={user.userId} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500 text-sm font-black text-white">
+                <li key={user.userId} className="rounded-2xl border border-[var(--border-neutral)] bg-[var(--bg-body)] p-4">
+                    <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border-neutral)] bg-[var(--accent-soft)] text-sm font-bold text-[var(--accent-strong)]">
                     {user.userNm.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex flex-col gap-1">
-                    <span className="font-black text-slate-100">{user.userNm}</span>
-                    <span className="text-xs text-slate-500">{user.email}</span>
+                    <span className="font-bold text-[var(--text-primary)]">{user.userNm}</span>
+                    <span className="text-xs text-[var(--text-secondary)]">{user.email}</span>
                     </div>
 
                     <span
                     className={cn(
-                        'mt-3 inline-flex rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.06em]',
+                        'mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.06em]',
                         user.roleChatId === 2
-                        ? 'bg-blue-500/15 text-blue-200'
-                        : 'bg-emerald-500/15 text-emerald-200',
+                        ? 'border border-[var(--border-neutral)] bg-[var(--accent-soft)] text-[var(--accent-strong)]'
+                        : 'border border-emerald-200 bg-emerald-50 text-emerald-800',
                     )}
                     >
                     {user.roleChatId === 2 ? 'Pode editar' : 'Somente leitura'}
@@ -74,7 +74,7 @@ const SharedUsers = ({ sharedUsers, setSharedUsers }: SharedUsersProps) => {
                     <div className="mt-3">
                     <button
                         type="button"
-                        className="inline-flex items-center gap-2 rounded-xl border border-red-300/20 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-200 transition hover:bg-red-500/15"
+                        className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-800 transition hover:bg-red-100"
                         onClick={() => handleRemoveUser(user.userId)}
                         aria-label={`Remover ${user.userNm}`}
                     >

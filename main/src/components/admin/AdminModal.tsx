@@ -1,4 +1,5 @@
 import type { FormEventHandler, ReactNode } from 'react';
+import { X } from 'lucide-react';
 import { modalStyles } from '../../utils/tailwindStyles';
 
 interface AdminModalProps {
@@ -43,7 +44,7 @@ export function AdminModal({
         onClick={onClose}
         aria-label="Fechar"
       >
-        x
+        <X size={16} strokeWidth={1.8} />
       </button>
     </header>
   );

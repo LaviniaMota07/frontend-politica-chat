@@ -4,9 +4,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ChatHeader } from './components/ChatHeader';
 import { ChatInput } from './components/ChatInput';
 import { ChatMessages } from './components/ChatMessages';
+import { useChatAiProviders } from './hooks/useChatAiProviders';
 import { useChat } from './hooks/useChat';
 import { useChatFilterOptions } from './hooks/useChatFilterOptions';
-import { aiProviders, chatDepartments, chatSystems } from './mocks/chat.mock';
+import { chatDepartments, chatSystems } from './mocks/chat.mock';
 import type { ChatNavigationState } from './types/chat.types';
 import { chatStyles } from '../../utils/tailwindStyles';
 
@@ -23,7 +24,7 @@ export default function ChatRoom() {
   const [selectedSystems, setSelectedSystems] = useState<number[]>(
     navigationState.selectedSystems ?? []
   );
-  const [selectedAiProvider, setSelectedAiProvider] = useState<number>(
+  const { aiProviders, selectedAiProvider, setSelectedAiProvider } = useChatAiProviders(
     navigationState.selectedAiProvider ?? 1
   );
 
@@ -38,7 +39,7 @@ export default function ChatRoom() {
     loadMoreMessages,
     hasMoreMessages,
     isLoadingMore,
-  } = useChat(chatId ?? '', selectedAiProvider, selectedDepartments, selectedSystems);
+  } = useChat(chatId ?? '', selectedAiProvider ?? 0, selectedDepartments, selectedSystems);
 
   if (!chatId) {
     return <Navigate to="/chat" replace />;
@@ -68,11 +69,11 @@ export default function ChatRoom() {
               isLoadingMore={isLoadingMore}
             />
             {typingUsers.length > 0 && (
-              <div className="mx-auto mb-3 flex w-fit items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-400">
+              <div className="mx-auto mb-3 flex w-fit items-center gap-3 rounded-full border border-[var(--border-neutral)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)]">
                 <div className="flex gap-1">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-300" />
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-300 [animation-delay:120ms]" />
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-300 [animation-delay:240ms]" />
+                  <span className="animate-typing-dot h-1.5 w-1.5 rounded-full bg-[var(--text-muted)]" />
+                  <span className="animate-typing-dot h-1.5 w-1.5 rounded-full bg-[var(--text-muted)] [animation-delay:200ms]" />
+                  <span className="animate-typing-dot h-1.5 w-1.5 rounded-full bg-[var(--text-muted)] [animation-delay:400ms]" />
                 </div>
                 <span>Alguém está digitando...</span>
               </div>

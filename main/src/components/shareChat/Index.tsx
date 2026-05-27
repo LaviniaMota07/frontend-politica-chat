@@ -120,7 +120,7 @@ const ShareChat = ({ onClose }: ShareChatProps) => {
           </header>
 
           <fieldset className={modalStyles.body}>
-            <legend className="text-xs font-black uppercase tracking-[0.1em] text-slate-500">Permissão</legend>
+            <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Permissão</legend>
             
             {permissions.map((permission) => (
               <CardPermissionType
@@ -134,7 +134,7 @@ const ShareChat = ({ onClose }: ShareChatProps) => {
             ))}
 
             {errors.permission && 
-              <p className="text-xs font-semibold text-red-300">{errors.permission.message}</p>
+              <p className="text-xs font-semibold text-red-700">{errors.permission.message}</p>
             }
 
           </fieldset>

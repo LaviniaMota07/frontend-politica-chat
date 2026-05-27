@@ -78,7 +78,7 @@ export default function FilterChat({
 
       <div className={chatStyles.filterOptions} ref={scrollContainerRef}>
         <input
-          className="mb-1 rounded-xl border border-white/10 bg-[#0b1220] px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-blue-300/40"
+          className="mb-1 h-9 w-full rounded-xl border border-[var(--border-neutral)] bg-[var(--bg-body)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[rgba(168,101,53,0.12)]"
           type="search"
           value={searchValue}
           onChange={(event) => onSearchChange(event.target.value)}
@@ -107,7 +107,7 @@ export default function FilterChat({
         ))}
 
         {visibleItems.length === 0 && (
-          <span className="px-3 py-2 text-sm text-slate-500">
+          <span className="px-3 py-2 text-sm text-[var(--text-muted)]">
             Nenhum {title.toLowerCase()} encontrado
           </span>
         )}

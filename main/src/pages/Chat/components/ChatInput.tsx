@@ -20,7 +20,7 @@ interface ChatInputProps {
   systems: string[];
   onSystemsChange: (systems: number[]) => void;
   fetchSystems: FetchFilterItems;
-  selectedAiProvider: number;
+  selectedAiProvider: number | null;
   aiProviders: number[];
   onAiProviderChange: (provider: number) => void;
 }
@@ -100,11 +100,11 @@ export function ChatInput({
           <details className={chatStyles.filterMenu}>
             <summary
               className={chatStyles.filterSummary}
-              title={`IA: ${selectedAiProvider}`}
-              aria-label={`Escolher IA para responder. Seleção atual: ${selectedAiProvider}`}
+              title={`IA: ${selectedAiProvider ?? 'nenhuma'}`}
+              aria-label={`Escolher IA para responder. Seleção atual: ${selectedAiProvider ?? 'nenhuma'}`}
             >
               <Bot size={15} />
-              <span>{selectedAiProvider}</span>
+              <span>{selectedAiProvider ?? '-'}</span>
             </summary>
 
             <div className={chatStyles.filterOptions}>
@@ -134,7 +134,7 @@ export function ChatInput({
         />
 
         <div className={chatStyles.inputActions}>
-          <span className="text-xs font-bold text-slate-500">{sourcesLabel}</span>
+          <span className="text-xs font-semibold text-[var(--text-muted)]">{sourcesLabel}</span>
 
           <button
             type="button"

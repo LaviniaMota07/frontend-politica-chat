@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { notifyUnauthorizedSession } from '../utils/authSession';
 
 const BASE_URL = import.meta.env.VITE_URL_API || 'http://localhost:8080';
 
@@ -74,6 +75,7 @@ export function useFetch<T = unknown>(): UseFetchReturn<T> {
                 // ── Resposta não-ok → toast.error ───────────────
                 if (!response.ok) {
                     let errorMessage = `Erro ${response.status}: ${response.statusText}`;
+                    const shouldEndSession = response.status === 401 && url !== '/user/login';
 
                     try {
                         const errorBody = await response.json();
@@ -84,6 +86,11 @@ export function useFetch<T = unknown>(): UseFetchReturn<T> {
                         }
                     } catch {
                         // resposta não é JSON, usa a mensagem padrão
+                    }
+
+                    if (shouldEndSession) {
+                        errorMessage = 'Sua sessão expirou. Faça login novamente.';
+                        notifyUnauthorizedSession();
                     }
 
                     setError(errorMessage);

@@ -252,7 +252,7 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
 
             <div className={adminStyles.filtersRow}>
               <label className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={17} />
+                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={17} />
                 <input
                   className={`${formStyles.input} ${adminStyles.filterInput} pl-10`}
                   type="text"

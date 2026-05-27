@@ -246,7 +246,7 @@ export default function AdminDocuments() {
             <h2 className={adminStyles.sectionTitle}>Ações disponíveis no backend</h2>
           </div>
 
-          <form className="mb-5 rounded-3xl border border-white/10 bg-white/[0.025]" onSubmit={handleUpload}>
+          <form className="mb-5 rounded-[20px] border border-[var(--border-neutral)] bg-[var(--bg-surface)]" onSubmit={handleUpload}>
             <header className={modalStyles.header}>
               <div>
                 <h2 className={modalStyles.title}>Enviar documento</h2>
@@ -310,7 +310,7 @@ export default function AdminDocuments() {
             </footer>
           </form>
 
-          <form className="mb-5 rounded-3xl border border-white/10 bg-white/[0.025]" onSubmit={handleNewVersion}>
+          <form className="mb-5 rounded-[20px] border border-[var(--border-neutral)] bg-[var(--bg-surface)]" onSubmit={handleNewVersion}>
             <header className={modalStyles.header}>
               <div>
                 <h2 className={modalStyles.title}>Nova versão</h2>
@@ -367,7 +367,7 @@ export default function AdminDocuments() {
             </footer>
           </form>
 
-          <form className="rounded-3xl border border-white/10 bg-white/[0.025]" onSubmit={handleSyncLinks}>
+          <form className="rounded-[20px] border border-[var(--border-neutral)] bg-[var(--bg-surface)]" onSubmit={handleSyncLinks}>
             <header className={modalStyles.header}>
               <div>
                 <h2 className={modalStyles.title}>Vínculos do documento</h2>
@@ -464,7 +464,10 @@ export default function AdminDocuments() {
                 <td className={adminStyles.td}>{document.id}</td>
                 <td className={adminStyles.td}>{document.version}</td>
                 <td className={adminStyles.td}>
-                  <span className={adminStyles.badgeActive}>{document.status}</span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className={getDocumentStatusDotClass(document.status)} aria-hidden="true" />
+                    <span className={adminStyles.badgeActive}>{document.status}</span>
+                  </span>
                 </td>
                 <td className={adminStyles.td}>
                   <button type="button" className={adminStyles.editButton} onClick={() => handleSelectDocument(document.id)}>
@@ -478,4 +481,18 @@ export default function AdminDocuments() {
       </section>
     </main>
   );
+}
+
+function getDocumentStatusDotClass(status: string) {
+  const normalizedStatus = status.toLowerCase();
+
+  if (normalizedStatus.includes('pend') || normalizedStatus.includes('process')) {
+    return adminStyles.statusDotPending;
+  }
+
+  if (normalizedStatus.includes('erro') || normalizedStatus.includes('fail')) {
+    return adminStyles.statusDotError;
+  }
+
+  return adminStyles.statusDotSynced;
 }

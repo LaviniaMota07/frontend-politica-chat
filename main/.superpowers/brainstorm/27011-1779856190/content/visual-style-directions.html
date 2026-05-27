@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direcoes visuais do redesign</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700;800&family=Newsreader:opsz,wght@6..72,600;6..72,700&family=Sora:wght@600;700;800&display=swap');
+
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d10;
+      --ink: #f3f1ec;
+      --muted: #98938a;
+      --line: rgba(255, 255, 255, 0.12);
+      --accent: #8bd7c7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #0b0d10;
+      color: var(--ink);
+      font-family: "Instrument Sans", sans-serif;
+    }
+
+    .page {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 40px;
+    }
+
+    .intro {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 32px;
+      margin-bottom: 28px;
+    }
+
+    .intro h1 {
+      max-width: 780px;
+      margin: 0;
+      font-family: "Sora", sans-serif;
+      font-size: clamp(34px, 5vw, 68px);
+      line-height: 0.95;
+      letter-spacing: -0.07em;
+    }
+
+    .intro p {
+      max-width: 430px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      position: relative;
+      overflow: hidden;
+      min-height: 680px;
+      cursor: pointer;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: #111418;
+      transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255, 255, 255, 0.28);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+    }
+
+    .card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(139, 215, 199, 0.25), 0 24px 90px rgba(0, 0, 0, 0.42);
+    }
+
+    .mock {
+      height: 470px;
+      padding: 18px;
+    }
+
+    .caption {
+      border-top: 1px solid var(--line);
+      padding: 22px;
+    }
+
+    .kicker {
+      margin: 0 0 10px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .caption h2 {
+      margin: 0;
+      font-size: 25px;
+      line-height: 1.05;
+      letter-spacing: -0.05em;
+    }
+
+    .caption p {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 10px;
+      color: rgba(243, 241, 236, 0.72);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .option-a {
+      --local-bg: #0c1013;
+      --local-panel: #151a1e;
+      --local-line: rgba(255, 255, 255, 0.11);
+      --local-accent: #66d3bf;
+      background: #0c1013;
+    }
+
+    .option-b {
+      --local-bg: #f0ede5;
+      --local-panel: #fffaf0;
+      --local-line: rgba(29, 27, 23, 0.13);
+      --local-accent: #ad6f38;
+      --local-text: #1d1b17;
+      --local-muted: #706b61;
+      background: #ebe6da;
+      color: #1d1b17;
+    }
+
+    .option-b .caption p,
+    .option-b .tag {
+      color: #706b61;
+    }
+
+    .option-b .tag,
+    .option-b .caption {
+      border-color: rgba(29, 27, 23, 0.13);
+    }
+
+    .option-b .kicker {
+      color: #8d4f25;
+    }
+
+    .option-c {
+      --local-bg: #111827;
+      --local-panel: #f7f8f4;
+      --local-line: rgba(17, 24, 39, 0.13);
+      --local-accent: #2f6fed;
+      background: #111827;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      height: 100%;
+      overflow: hidden;
+      border: 1px solid var(--local-line);
+      border-radius: 22px;
+      background: var(--local-bg);
+    }
+
+    .rail {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+      padding: 16px 10px;
+      border-right: 1px solid var(--local-line);
+    }
+
+    .brand {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--local-accent);
+      color: #07100e;
+      font-weight: 900;
+    }
+
+    .nav-dot {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--local-line);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .option-b .nav-dot {
+      background: rgba(29, 27, 23, 0.03);
+    }
+
+    .main {
+      display: grid;
+      grid-template-rows: 66px 1fr 96px;
+      min-width: 0;
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--local-line);
+      color: var(--local-text, #f3f1ec);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .top span:last-child {
+      width: 104px;
+      height: 32px;
+      border: 1px solid var(--local-line);
+      border-radius: 999px;
+    }
+
+    .chat {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 24px;
+    }
+
+    .bubble {
+      width: 74%;
+      border: 1px solid var(--local-line);
+      border-radius: 18px;
+      padding: 14px;
+      background: var(--local-panel);
+    }
+
+    .option-a .bubble {
+      background: #151a1e;
+    }
+
+    .option-b .bubble {
+      background: #fffaf0;
+      color: #1d1b17;
+    }
+
+    .option-c .bubble {
+      background: #f7f8f4;
+      color: #111827;
+    }
+
+    .bubble.user {
+      align-self: flex-end;
+      width: 58%;
+      background: var(--local-accent);
+      color: #07100e;
+      border-color: transparent;
+    }
+
+    .line {
+      height: 8px;
+      margin-bottom: 8px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.24;
+    }
+
+    .line.short {
+      width: 58%;
+    }
+
+    .dock {
+      margin: 0 20px 20px;
+      border: 1px solid var(--local-line);
+      border-radius: 20px;
+      background: var(--local-panel);
+      padding: 14px;
+    }
+
+    .option-a .dock {
+      background: #151a1e;
+    }
+
+    .dock-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .input-line {
+      flex: 1;
+      height: 12px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.18;
+    }
+
+    .send {
+      width: 36px;
+      height: 36px;
+      border-radius: 14px;
+      background: var(--local-accent);
+    }
+
+    .option-b .app {
+      grid-template-columns: 224px 1fr;
+      color: #1d1b17;
+    }
+
+    .option-b .rail {
+      align-items: stretch;
+      background: #1f2320;
+      color: #f8f0df;
+    }
+
+    .option-b .brand {
+      width: 100%;
+      background: transparent;
+      color: #f8f0df;
+      justify-content: start;
+      letter-spacing: -0.05em;
+    }
+
+    .option-b .nav-dot {
+      width: 100%;
+      border-radius: 12px;
+      border-color: rgba(255, 255, 255, 0.11);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .option-b .nav-dot:nth-child(3) {
+      background: #ad6f38;
+      border-color: #ad6f38;
+    }
+
+    .option-c .app {
+      grid-template-columns: 96px 1fr;
+      background: #f7f8f4;
+    }
+
+    .option-c .rail {
+      background: #111827;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .option-c .top {
+      color: #111827;
+    }
+
+    .option-c .chat {
+      background-image:
+        linear-gradient(rgba(17, 24, 39, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(17, 24, 39, 0.05) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .option-c .caption {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    @media (max-width: 1100px) {
+      .cards {
+        grid-template-columns: 1fr;
+      }
+
+      .card {
+        min-height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="intro">
+      <h1>Menos neon. Mais produto moderno.</h1>
+      <p>Compare tres caminhos para substituir o visual atual: menos gradientes, menos glow e mais superficies solidas, com personalidade suficiente para nao virar dashboard generico.</p>
+    </section>
+
+    <section class="cards">
+      <article class="card option-a" data-choice="a" onclick="toggleSelect(this)">
+        <div class="mock">
+          <div class="app">
+            <aside class="rail">
+              <div class="brand">U</div>
+              <div class="nav-dot"></div>
+              <div class="nav-dot"></div>
+              <div class="nav-dot"></div>
+              <div class="nav-dot"></div>
+            </aside>
+            <section class="main">
+              <div class="top"><span>Politicas internas</span><span></span></div>
+              <div class="chat">
+                <div class="bubble"><div class="line"></div><div class="line"></div><div class="line short"></div></div>
+                <div class="bubble user"><div class="line"></div><div class="line short"></div></div>
+                <div class="bubble"><div class="line"></div><div class="line"></div><div class="line"></div></div>
+              </div>
+              <div class="dock"><div class="dock-row"><div class="input-line"></div><div class="send"></div></div></div>
+            </section>
+          </div>
+        </div>
+        <div class="caption">
+          <p class="kicker">Opcao A</p>
+          <h2>Studio Dark Minimal</h2>
+          <p>Escuro sofisticado, superficies quase planas, acento mint so onde existe acao. Mantem a identidade AI-first sem o excesso de brilho.</p>
+          <div class="tags"><span class="tag">recomendado</span><span class="tag">dark premium</span><span class="tag">menos gradiente</span></div>
+        </div>
+      </article>
+
+      <article class="card option-b" data-choice="b" onclick="toggleSelect(this)">
+        <div class="mock">
+          <div class="app">
+            <aside class="rail">
+              <div class="brand">Unit Residencia</div>
+              <div class="nav-dot"></div>
+              <div class="nav-dot"></div>
+              <div class="nav-dot"></div>
+              <div class="nav-dot"></div>
+            </aside>
+            <section class="main">
+              <div class="top"><span>Assistente de politicas</span><span></span></div>
+              <div class="chat">
+                <div class="bubble"><div class="line"></div><div class="line"></div><div class="line short"></div></div>
+                <div class="bubble user"><div class="line"></div><div class="line short"></div></div>
+                <div class="bubble"><div class="line"></div><div class="line"></div><div class="line"></div></div>
+              </div>
+              <div class="dock"><div class="dock-row"><div class="input-line"></div><div class="send"></div></div></div>
+            </section>
+          </div>
+        </div>
+        <div class="caption">
+          <p class="kicker">Opcao B</p>
+          <h2>Editorial Warm SaaS</h2>
+          <p>Mais humano e institucional: fundo claro quente, sidebar escura e acentos cobre. Menos "IA futurista", mais produto corporativo refinado.</p>
+          <div class="tags"><span class="tag">mais claro</span><span class="tag">institucional</span><span class="tag">editorial</span></div>
+        </div>
+      </article>
+
+      <article class="card option-c" data-choice="c" onclick="toggleSelect(this)">
+        <div class="mock">
+          <div class="app">
+            <aside class="rail">
+              <div class="brand">U</div>
+              <div class="nav-dot"></div>
+              <div class="nav-dot"></div>
+              <div class="nav-dot"></div>
+              <div class="nav-dot"></div>
+            </aside>
+            <section class="main">
+              <div class="top"><span>Central de conhecimento</span><span></span></div>
+              <div class="chat">
+                <div class="bubble"><div class="line"></div><div class="line"></div><div class="line short"></div></div>
+                <div class="bubble user"><div class="line"></div><div class="line short"></div></div>
+                <div class="bubble"><div class="line"></div><div class="line"></div><div class="line"></div></div>
+              </div>
+              <div class="dock"><div class="dock-row"><div class="input-line"></div><div class="send"></div></div></div>
+            </section>
+          </div>
+        </div>
+        <div class="caption">
+          <p class="kicker">Opcao C</p>
+          <h2>Precision Workspace</h2>
+          <p>Hibrido moderno: sidebar escura, area principal clara, grid sutil e azul controlado. Parece ferramenta de trabalho, nao landing page.</p>
+          <div class="tags"><span class="tag">mais moderno</span><span class="tag">workspace</span><span class="tag">alto contraste</span></div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,15 +1,17 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFetch } from '../../hooks/useFetch';
 import { ChatHeader } from './components/ChatHeader';
 import { ChatInput } from './components/ChatInput';
 import { ChatWelcome } from './components/ChatWelcome';
-import { aiProviders, chatDepartments, chatSystems } from './mocks/chat.mock';
+import { chatDepartments, chatSystems } from './mocks/chat.mock';
 import type { ChatNavigationState, CreateMessageRequest, CreateMessageResponse } from './types/chat.types';
 import { chatStyles } from '../../utils/tailwindStyles';
 import { useChatHistory } from '../../contexts/ChatHistoryContext';
 import { useChatFilterOptions } from './hooks/useChatFilterOptions';
+import { useChatAiProviders } from './hooks/useChatAiProviders';
 
 export default function Chat() {
   const { user } = useAuth();
@@ -21,13 +23,17 @@ export default function Chat() {
   const [inputValue, setInputValue] = useState('');
   const [selectedDepartments, setSelectedDepartments] = useState<number[]>([]);
   const [selectedSystems, setSelectedSystems] = useState<number[]>([]);
-  const [selectedAiProvider, setSelectedAiProvider] = useState<number>(1);
+  const { aiProviders, selectedAiProvider, setSelectedAiProvider } = useChatAiProviders(1);
 
   const isAdmin = user.userTypeId === '1';
 
   async function handleSendMessage() {
     const trimmed = inputValue.trim();
     if (!trimmed || loading) return;
+    if (!selectedAiProvider) {
+      toast.error('Nenhum modelo de IA ativo foi encontrado. Cadastre um modelo antes de enviar mensagens.');
+      return;
+    }
 
     const body: CreateMessageRequest = {
       messageText: trimmed,
@@ -44,8 +50,11 @@ export default function Chat() {
       const navigationState: ChatNavigationState = {
         selectedDepartments,
         selectedSystems,
-        selectedAiProvider,
       };
+
+      if (selectedAiProvider) {
+        navigationState.selectedAiProvider = selectedAiProvider;
+      }
 
       navigate(`/chat/${chatId}`, { state: navigationState });
     }
@@ -54,7 +63,7 @@ export default function Chat() {
   return (
     <main className={chatStyles.page} data-role={isAdmin ? 'admin' : 'user'}>
       <section className={chatStyles.main}>
-        <ChatHeader isConnected={false} />
+        <ChatHeader />
 
         <div className={chatStyles.content}>
           <ChatWelcome />

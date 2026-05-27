@@ -52,6 +52,7 @@ export function useChat(
     selectedSystems,
     user,
     socketRef,
+    isConnected,
     setInputValueState,
     setMessages,
   });

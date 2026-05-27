@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useMemo } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, useMemo } from 'react';
 import type { ReactNode } from 'react';
+import { AUTH_UNAUTHORIZED_EVENT } from '../utils/authSession';
 
 type UserRole = '2' | '1';
 
@@ -23,16 +24,46 @@ interface AuthContextData {
 }
 
 const AuthContext = createContext<AuthContextData | undefined>(undefined);
+const AUTH_USER_STORAGE_KEY = 'auth_user';
+const DEFAULT_USER: User = { name: '', email: '', role: '1', userTypeId: '1' };
+
+function getStoredUser() {
+  const saved = sessionStorage.getItem(AUTH_USER_STORAGE_KEY);
+
+  if (!saved) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(saved) as User;
+  } catch {
+    sessionStorage.removeItem(AUTH_USER_STORAGE_KEY);
+    return null;
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User>(() => {
-    const saved = sessionStorage.getItem('auth_user');
-    return saved ? JSON.parse(saved) : { name: '', email: '', role: '1', userTypeId: '1' };
+    return getStoredUser() ?? DEFAULT_USER;
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return !!sessionStorage.getItem('auth_user');
+    return getStoredUser() !== null;
   });
+
+  const logout = useCallback(() => {
+    setUser(DEFAULT_USER);
+    setIsAuthenticated(false);
+    sessionStorage.removeItem(AUTH_USER_STORAGE_KEY);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, logout);
+
+    return () => {
+      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, logout);
+    };
+  }, [logout]);
 
   function login(userData: User) {
     const typeUserId = userData.userTypeId || String(userData.typeUserId ?? '') as UserRole;
@@ -43,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     setUser(normalizedUser);
     setIsAuthenticated(true);
-    sessionStorage.setItem('auth_user', JSON.stringify(normalizedUser));
+    sessionStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(normalizedUser));
   }
 
   function loginAsAdmin() {
@@ -55,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     setUser(mockUser);
     setIsAuthenticated(true);
-    sessionStorage.setItem('auth_user', JSON.stringify(mockUser));
+    sessionStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(mockUser));
   }
 
   function loginAsUser() {
@@ -67,12 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     setUser(mockUser);
     setIsAuthenticated(true);
-    sessionStorage.setItem('auth_user', JSON.stringify(mockUser));
-  }
-
-  function logout() {
-    setIsAuthenticated(false);
-    sessionStorage.removeItem('auth_user');
+    sessionStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(mockUser));
   }
 
   function updateProfile(profile: Pick<User, 'name' | 'email'>) {
@@ -81,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...currentUser,
         ...profile,
       };
-      sessionStorage.setItem('auth_user', JSON.stringify(updated));
+      sessionStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(updated));
       return updated;
     });
   }
@@ -96,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateProfile,
       logout,
     }),
-    [user, isAuthenticated]
+    [user, isAuthenticated, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

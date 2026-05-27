@@ -1,110 +1,120 @@
-# Redesign — AI Observatory
+# Redesign — Editorial Warm SaaS
 **Data:** 2026-05-27  
 **Status:** Aprovado  
+**Direcao aprovada:** Opcao B — Editorial Warm SaaS  
 **Escopo:** Todas as telas — Login, Chat, Sidebar, Admin Panels  
-**Stack:** React 19 + Vite + Tailwind v4 (sem novas dependências obrigatórias; fontes via Google Fonts; animações CSS-first)
+**Stack:** React 19 + Vite + Tailwind v4 (sem novas dependencias obrigatorias; fontes via Google Fonts; animacoes CSS-first)
 
 ---
 
 ## 1. Contexto
 
-O sistema **Assistente de Políticas** é um chat corporativo com IA que permite consultar documentos de política e normas da empresa. Possui dois perfis: usuário final (chat, perfil) e administrador (gestão de usuários, documentos, departamentos, tokens).
+O sistema **Assistente de Politicas** e um chat corporativo com IA para consultar documentos de politica e normas internas. Ele atende usuarios finais no fluxo de conversa e administradores na gestao de usuarios, documentos, departamentos, sistemas e tokens.
 
-O objetivo do redesign é elevar a experiência visual de um SaaS navy genérico para uma identidade **dark premium AI-first**, com inspiração em Perplexity/Claude — limpo, focado no chat, com profundidade e sofisticação.
-
----
-
-## 2. Princípios de Design
-
-- **Profundidade sobre flatness:** camadas de background criam hierarquia visual sem necessidade de sombras agressivas
-- **Cyan-teal como alma:** o acento principal deve emergir do escuro com vida própria, não apenas colorir botões
-- **Tipografia faz o trabalho pesado:** headings com personalidade, body limpo
-- **Glass morphism real:** backdrop-blur + bordas sutis, não simulado com opacidade de cor
-- **Animações com propósito:** fade-in staggered no load, transições de sidebar, glow pulsante no welcome state
+O redesign anterior ficou visualmente carregado por excesso de dark neon, gradientes e brilho. A nova direcao busca uma experiencia mais moderna, institucional e direta: superficies claras e quentes, sidebar escura solida, acento cobre/terracota e tipografia simples. A interface deve parecer uma ferramenta de trabalho confiavel, nao uma landing page futurista.
 
 ---
 
-## 3. Fundações de Design (Design Tokens)
+## 2. Principios de Design
+
+- **Produto antes do efeito:** remover gradientes decorativos, glows fortes e glass morphism como linguagem principal.
+- **Calor institucional:** usar fundo marfim quente e acento cobre para uma sensacao humana, editorial e corporativa.
+- **Contraste claro:** sidebar escura cria orientacao; area principal clara melhora leitura prolongada no chat e nas tabelas.
+- **Tipografia direta:** uma familia sem serifa simples conduz toda a interface; peso, tamanho e espacamento definem hierarquia.
+- **Superficies tacteis:** cards e inputs usam bordas finas, sombras discretas e fundos solidos, com poucos efeitos translucidos.
+- **Movimento contido:** transicoes rapidas e funcionais, sem pulso constante ou animacoes ornamentais.
+
+---
+
+## 3. Fundacoes de Design
 
 ### Paleta de Cores
 
 ```css
---bg-base:      #050d1a;   /* background mais fundo */
---bg-body:      #07121f;   /* body da aplicação */
---bg-surface:   #0d1b2f;   /* cards, painéis */
---bg-elevated:  #0f2040;   /* modais, dropdowns */
+--bg-base:      #eee8dc;  /* fundo geral marfim quente */
+--bg-body:      #f5f1e8;  /* area principal */
+--bg-surface:   #fffaf0;  /* cards, tabelas, bubbles */
+--bg-elevated:  #ffffff;  /* modais, dropdowns */
 
---accent:       #00d4aa;   /* cyan-teal primário */
---accent-glow:  #00fff2;   /* glow, highlights */
---accent-muted: rgba(0,212,170,0.12); /* bordas, bg sutis */
+--sidebar-bg:   #20231f;  /* navegacao escura solida */
+--sidebar-soft: #2b2f2a;  /* secoes internas da sidebar */
 
---text-primary:   #eef2f7; /* texto principal */
---text-secondary: #7a9ab8; /* texto secundário */
---text-muted:     #3d5c78; /* placeholders, labels */
+--accent:       #a86535;  /* cobre primario */
+--accent-strong:#8d4f25;  /* hover/pressed */
+--accent-soft:  #efe0cf;  /* backgrounds sutis */
 
---border-cyan:    rgba(0,212,170,0.12);
---border-neutral: rgba(255,255,255,0.06);
+--text-primary:   #1f1d19;
+--text-secondary: #625d54;
+--text-muted:     #8a8378;
+--text-inverse:   #fbf6ea;
+
+--border-neutral: rgba(31, 29, 25, 0.12);
+--border-strong:  rgba(31, 29, 25, 0.2);
 ```
 
 ### Tipografia
 
-| Papel | Fonte | Onde |
-|---|---|---|
-| Display / Headings | **Syne** (Google Fonts) | Títulos de página, welcome state, headings |
-| Body / UI | **DM Sans** (Google Fonts) | Todo texto de interface, labels, mensagens |
-| Dados / Mono | **JetBrains Mono** (Google Fonts) | Tabelas de tokens, IDs, código |
+- **UI e headings:** `IBM Plex Sans` via Google Fonts.
+- **Dados e tokens:** `IBM Plex Mono` via Google Fonts.
+- **Racional:** substituir fontes expressivas por uma familia mais simples e direta. Headings usam a mesma familia da UI, apenas com peso `700/800`, tracking levemente negativo e tamanhos maiores.
+- **Fallback:** `system-ui, sans-serif` para UI; `ui-monospace, monospace` para dados.
 
-### Superfícies
+### Superficies
 
-- **Card glass:** `background: rgba(13,27,47,0.7); backdrop-filter: blur(12px); border: 1px solid var(--border-cyan);`
-- **Botão primário:** `background: #00d4aa; color: #050d1a; box-shadow: 0 0 20px rgba(0,212,170,0.3);`
-- **Botão secundário:** glass com borda `cyan/20`, texto `--accent`
-- **Botão danger:** glass red/20, texto red-400; hover → solid red
+- **Card padrao:** `background: var(--bg-surface); border: 1px solid var(--border-neutral); border-radius: 20px; box-shadow: 0 18px 50px rgba(31,29,25,0.08);`
+- **Painel escuro:** `background: var(--sidebar-bg); color: var(--text-inverse); border: 1px solid rgba(255,255,255,0.08);`
+- **Botao primario:** fundo `--accent`, texto claro, hover `--accent-strong`, sombra curta e quente.
+- **Botao secundario:** fundo transparente ou marfim, borda neutra, texto grafite.
+- **Botao danger:** vermelho seco, sem glass; hover aumenta contraste.
+- **Inputs:** fundo branco quente, borda neutra, focus ring cobre suave.
 
 ---
 
-## 4. Layout & Navegação
+## 4. Layout & Navegacao
 
-### Sidebar — "Glass Rail"
+### Sidebar — "Editorial Rail"
 
-- **Dimensões:** expandida `280px`, colapsada `64px`
-- **Posição:** `position: fixed; margin: 12px; border-radius: 16px` — flutuante, não anexada à borda
-- **Estilo:** glass card (`backdrop-blur: 20px`, `border: 1px solid rgba(0,212,170,0.1)`)
-- **Transição:** `width 300ms ease` com opacidade dos labels
-- **Seções:**
-  - Topo: logo + nome da empresa (gradiente de texto `cyan → white`), botão de nova conversa
-  - Nav de fontes (Documentos, Usuários, Departamentos, Sistemas, Tokens) — ícones com pill hover
-  - Lista de chats com scroll personalizado (`scrollbar: 2px, color: cyan/30`)
-  - Bottom: glass card com avatar + nome + link "Editar perfil"
-- **Comportamento de collapse:** ícones permanecem, labels desaparecem; tooltip no hover dos ícones
+- **Dimensoes:** expandida `280px`, colapsada `72px`.
+- **Posicao:** `fixed`, margem `12px`, altura `calc(100dvh - 24px)`, border-radius `18px`.
+- **Estilo:** painel escuro solido; sem blur como efeito central.
+- **Topo:** logo compacto + nome da empresa em texto claro; sem gradiente de texto.
+- **Navegacao:** itens em pills escuras com hover por preenchimento sutil; ativo usa fundo cobre e texto claro.
+- **Lista de chats:** separada por bloco com borda interna; scrollbar discreta em tons neutros.
+- **Perfil:** card escuro levemente elevado com avatar simples, nome, email e link "Editar perfil".
+- **Collapse:** icones permanecem; labels somem; tooltip pode usar fundo escuro solido.
 
 ### DashboardLayout
 
-- Main content: `padding-left: 292px` (sidebar 280px + 12px gap)
-- Background: `var(--bg-body)` uniforme
-- Topbar: removida — contexto e breadcrumb vivem dentro de cada página
-- Overflow: `auto` no main, sem `overflow: hidden` no body
+- Main content com `padding-left: 304px` quando sidebar expandida.
+- Background principal `var(--bg-body)` sem gradientes radiais globais.
+- Conteudo com largura maxima por pagina, preservando leitura confortavel.
+- Topbar global continua dispensavel; cada pagina apresenta seu titulo e acoes no proprio conteudo.
+- `overflow: auto` no main para paginas administrativas e chat.
 
 ---
 
-## 5. Tela de Login — "Borealis Login"
+## 5. Tela de Login — "Editorial Access"
 
 ### Estrutura
 
-- Full-screen `min-h-screen`, fundo `--bg-base`
-- **Mesh gradient animado** (CSS puro): 3 nódulos de cor (`#00d4aa`, `#007acc`, `#00fff2`) se movendo em círculo com `@keyframes` — opacidade baixa (`0.15`) para não distrair
-- Card central: `width: 420px`, glass card com `backdrop-blur(24px)`, `border-radius: 20px`
+- Full-screen `min-h-screen`, fundo marfim quente.
+- Layout em duas colunas no desktop:
+  - esquerda com mensagem institucional, marca e pequena lista de beneficios;
+  - direita com card de login.
+- Mobile empilha conteudo e card.
+- Sem mesh gradient animado. Pode usar uma faixa escura lateral ou bloco editorial com borda, mas sem decoracao pesada.
 
-### Conteúdo do Card
+### Conteudo do Card
 
-1. Logo + nome em topo (sem link)
-2. Headline `Syne` 24px: **"Consulte. Entenda. Decida."**
-3. Subtítulo `DM Sans` muted 14px: "Acesse as políticas e normas da sua empresa."
-4. Formulário:
-   - Input email: label acima, `background: rgba(255,255,255,0.04)`, `border: 1px solid rgba(255,255,255,0.08)`, focus ring `2px solid rgba(0,212,170,0.6)`
-   - Input senha: idem + toggle show/hide
-5. Botão CTA: full-width, dark-on-cyan com glow
-6. Link "Solicitar acesso" como texto abaixo do botão — underline cyan, discrete
+1. Logo + nome em topo.
+2. Headline: **"Acesse as politicas da sua empresa."**
+3. Subtitulo: "Consulte normas, procedimentos e documentos internos em uma conversa simples."
+4. Formulario:
+   - Labels acima dos campos, texto direto.
+   - Inputs com fundo `--bg-elevated`, borda `--border-neutral`, focus ring cobre.
+   - Toggle de senha discreto, sem brilho.
+5. Botao CTA full-width em cobre.
+6. Link "Solicitar acesso" como texto abaixo do botao, em cobre escuro.
 
 ---
 
@@ -112,31 +122,32 @@ O objetivo do redesign é elevar a experiência visual de um SaaS navy genérico
 
 ### Estado Vazio / Welcome
 
-- Ícone grande em glass circle (`80px`) com glow cyan pulsante (`@keyframes pulse-glow`)
-- Headline `Syne` 32px: "O que você precisa consultar hoje?"
-- Subtítulo muted 16px
-- 3 suggestion chips em glass pills com `border: 1px solid cyan/20`, hover → `border-color: cyan/60` + glow sutil
+- Remover icone brilhante e pulso.
+- Usar bloco central editorial: titulo forte, subtitulo curto e cards/chips de sugestao.
+- Headline: "O que voce precisa consultar hoje?"
+- Sugestoes como pills claras com borda neutra; hover usa borda cobre e fundo `--accent-soft`.
+- Icone, se mantido, deve ser pequeno e contido dentro de um quadrado arredondado, sem glow.
 
 ### Mensagens
 
-- **Assistente (left):**
-  - Bubble: glass card `border: 1px solid cyan/15`, `border-radius: 16px 16px 16px 4px`
-  - Avatar: glass circle com ícone robot, ring `2px solid cyan/40`
-  - Source attribution: pills abaixo com ícone `FileText` + nome do documento; hover revela trecho em tooltip
-  
-- **Usuário (right):**
-  - Bubble: `background: rgba(0,212,170,0.12)`, `border: 1px solid cyan/20`, `border-radius: 16px 16px 4px 16px`
-  - Sem avatar excessivo (apenas inicial no mobile)
+- **Assistente:**
+  - Bubble em `--bg-surface`, borda neutra, raio `18px 18px 18px 6px`.
+  - Avatar opcional com fundo escuro solido e icone claro.
+  - Font-size confortavel para leitura; line-height generoso.
+  - Fontes/documentos aparecem como chips claros com borda neutra.
 
-- **Typing indicator:** 3 dots com stagger animation em cyan
+- **Usuario:**
+  - Bubble cobre `--accent`, texto `--text-inverse`, raio `18px 18px 6px 18px`.
+  - Sem sombras coloridas.
+
+- **Typing indicator:** tres pontos neutros com animacao curta; sem cor neon.
 
 ### Input Dock
 
-- Floating bottom: glass panel `border-radius: 20px`, `border: 1px solid rgba(0,212,170,0.2)`, `backdrop-blur: 16px`
-- Posição: `position: sticky; bottom: 24px; margin: 0 24px`
-- Textarea auto-expand integrada ao glass, sem borda própria
-- Filter chips acima do input como tags compactas com ícone × para remover
-- Botão send: `48px` circle, `background: #00d4aa`, `color: #050d1a`, `box-shadow: 0 0 12px rgba(0,212,170,0.4)`
+- Painel sticky no rodape com fundo `--bg-surface`, borda neutra e sombra discreta.
+- Textarea integrada, sem fundo escuro.
+- Filter chips acima do input como tags compactas em marfim/cobre suave.
+- Botao send quadrado-arredondado ou circular em cobre solido.
 
 ---
 
@@ -144,92 +155,106 @@ O objetivo do redesign é elevar a experiência visual de um SaaS navy genérico
 
 ### Estrutura Comum
 
-Todas as páginas admin seguem: `padding: 32px`, max-width `1200px`, heading de página em `Syne` 28px.
+Todas as paginas admin seguem `padding: 32px`, max-width `1200px`, heading em `IBM Plex Sans` com `font-weight: 800`.
 
-### Stats Cards (AdminUsers)
+### Stats Cards
 
-- 4 cards glass em grid, `border: 1px solid cyan/10`
-- Número grande: `Syne` 40px, `--text-primary`
-- Label: `DM Sans` 11px uppercase tracked, `--text-muted`
-- Hover: `border-color: cyan/30` + glow sutil
+- Cards claros com borda neutra e sombra baixa.
+- Numero grande em grafite, sem efeito de cor.
+- Label em uppercase pequeno, tom `--text-muted`.
+- Hover apenas aumenta borda e desloca `translateY(-1px)`.
 
 ### Tabelas
 
-- Wrapper: glass card com border `cyan/10`
-- Header row: `background: rgba(0,212,170,0.05)`, texto `DM Sans` 11px uppercase tracked, `--text-muted`
-- Body rows: hover `rgba(255,255,255,0.02)`, separador `border-bottom: 1px solid rgba(255,255,255,0.05)`
+- Wrapper claro com borda neutra.
+- Header row em `#ebe3d6` ou `--accent-soft`, sem transparencia escura.
+- Body rows com hover `rgba(168,101,53,0.06)`.
+- Separadores `border-bottom: 1px solid var(--border-neutral)`.
 - Badges:
-  - Admin: `background: rgba(0,212,170,0.15); color: #00d4aa; border: 1px solid rgba(0,212,170,0.3)`
-  - Blocked: `background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3)`
-  - Active: `background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3)`
-- Paginação: pill nav com números
+  - Admin: fundo cobre suave, texto cobre escuro.
+  - Blocked: fundo vermelho seco suave, texto vermelho escuro.
+  - Active: fundo verde suave, texto verde escuro.
+- Paginacao com botoes claros, borda neutra e estado ativo cobre.
 
 ### Modais
 
-- Backdrop: `backdrop-blur(32px)` + overlay `rgba(5,13,26,0.8)`
-- Panel: glass card, `border-top: 2px solid #00d4aa` como accent stripe
-- Formulários: `DM Sans`, labels acima dos inputs, espaçamento generoso
-- Ações: botões primário (cyan) + secundário (glass) + danger (red glass → red solid hover)
+- Backdrop escuro translucido simples: `rgba(31,29,25,0.52)`.
+- Panel claro, borda neutra, raio `22px`.
+- Stripe superior opcional em cobre com 3px.
+- Acoes: primario cobre, secundario neutro, danger vermelho.
 
 ### AdminDocuments
 
-- Cards de documento com status dot: synced = verde sólido, pending = amarelo pulsante, error = vermelho
+- Cards de documento claros.
+- Status dot solido: synced verde, pending amber, error vermelho.
+- Pending pode ter animacao leve apenas se necessario para indicar processamento.
 
 ### AdminTokens
 
-- Valores de token em `JetBrains Mono`, truncado com copy-on-click
+- Valores de token em `IBM Plex Mono`, truncados com copy-on-click.
+- Chips e codigos usam fundo marfim mais escuro, nao fundo neon.
 
 ---
 
 ## 8. Componentes Compartilhados
 
-### ModalBase
-- Reutilizável com `children`, `title`, `onClose`
-- Aplica backdrop blur + panel glass + accent stripe cyan
+### SurfaceCard
 
-### GlassCard
-- Componente wrapper: glass + border + border-radius padrão
-- Props: `hover` (activa hover glow), `accent` (muda borda para cyan/30)
-
-### Badge
-- Variantes: `success`, `warning`, `error`, `info`, `admin`, `user`
-- Todos no estilo glass pill
+- Substitui o conceito de `GlassCard`.
+- Props sugeridas: `tone` (`light`, `dark`, `accentSoft`), `interactive`, `className`.
+- Aplica fundo solido, borda, radius e sombra de acordo com o tom.
 
 ### Button
-- Variantes: `primary` (cyan solid), `secondary` (glass), `ghost`, `danger`
-- Tamanhos: `sm`, `md`, `lg`
+
+- Variantes: `primary`, `secondary`, `ghost`, `danger`.
+- Primario cobre solido.
+- Secundario claro com borda.
+- Ghost sem borda, hover neutro.
+- Danger vermelho seco.
+
+### Badge
+
+- Variantes: `success`, `warning`, `error`, `info`, `admin`, `user`.
+- Todos em estilo pill solido/claro, sem blur.
+
+### ModalBase
+
+- Reutilizavel com `children`, `title`, `description`, `onClose`.
+- Aplica backdrop simples e painel claro.
 
 ---
 
-## 9. Animações
+## 9. Animacoes
 
-| Elemento | Animação | Duração |
-|---|---|---|
-| Entrada de página | fade-in + slide-up 8px staggered | 200ms + delay por item |
-| Sidebar collapse | width + opacity labels | 300ms ease |
-| Botões | scale(0.97) no active | 100ms |
-| Hover nos cards | border-color + box-shadow | 200ms |
-| Welcome glow | pulse-glow cyan | 2s infinite |
-| Typing dots | stagger bounce | 600ms |
-| Mesh background | rotate/float nódulos | 8–12s linear infinite |
+- **Entrada de pagina:** fade-in + slide-up `6px`, `180ms`.
+- **Sidebar collapse:** `width` + opacidade dos labels, `240ms ease`.
+- **Botoes:** `translateY(-1px)` no hover e `scale(0.98)` no active.
+- **Cards:** border-color + shadow, `160ms`.
+- **Typing dots:** opacity/translate discreto, `600ms`.
+- **Sem:** glow pulsante, mesh animado, gradiente radial global ou sombras coloridas permanentes.
 
 ---
 
 ## 10. Arquivos a Criar / Modificar
 
-### Novos arquivos
-- `src/index.css` — atualizar com novos tokens CSS e imports de fontes
-- `src/utils/tailwindStyles.ts` — reescrever todos os style strings com nova paleta
-- `src/components/ui/GlassCard.tsx` — componente glass reutilizável
-- `src/components/ui/Button.tsx` — sistema de botões
-- `src/components/ui/Badge.tsx` — badges por variante
-- `src/components/ui/Modal.tsx` — modal base reutilizável
+### Arquivos base
+
+- `src/index.css` — atualizar tokens CSS, imports de `IBM Plex Sans` / `IBM Plex Mono`, body e scrollbar.
+- `src/utils/tailwindStyles.ts` — reescrever style strings para a paleta Editorial Warm SaaS.
+
+### Componentes compartilhados
+
+- `src/components/ui/SurfaceCard.tsx` — card solido reutilizavel.
+- `src/components/ui/Button.tsx` — sistema de botoes.
+- `src/components/ui/Badge.tsx` — badges por variante.
+- `src/components/ui/Modal.tsx` — modal base reutilizavel.
 
 ### Telas a redesenhar
+
 - `src/layouts/DashboardLayout.tsx`
 - `src/pages/Sidebar/Sidebar.tsx`
-- `src/pages/Login/` — novo layout Borealis
-- `src/pages/Chat/` — welcome state + chat room
+- `src/pages/Login/`
+- `src/pages/Chat/`
 - `src/pages/AdminUsers/`
 - `src/pages/AdminDocuments/`
 - `src/pages/AdminCatalogs/`
@@ -238,10 +263,11 @@ Todas as páginas admin seguem: `padding: 32px`, max-width `1200px`, heading de 
 
 ---
 
-## 11. O que NÃO muda
+## 11. O que NAO muda
 
-- Lógica de autenticação e rotas (`App.tsx`, `ProtectedRoute`, `AuthContext`)
-- Serviços de API (`adminApi.ts`, hooks de dados)
-- Validação Zod
-- Estrutura de contexto e estado de chat
-- Regras de role (`allowedRoles`)
+- Logica de autenticacao e rotas (`App.tsx`, `ProtectedRoute`, `AuthContext`).
+- Servicos de API (`adminApi.ts`, hooks de dados).
+- Validacao Zod.
+- Estrutura de contexto e estado de chat.
+- Regras de role (`allowedRoles`).
+- Contratos de dados consumidos por componentes existentes.

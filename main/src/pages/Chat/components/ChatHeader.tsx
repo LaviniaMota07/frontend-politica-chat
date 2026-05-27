@@ -10,11 +10,12 @@ interface ChatHeaderProps {
   chatId?: string;
 }
 
-export function ChatHeader({ isConnected = false, chatId }: ChatHeaderProps) {
+export function ChatHeader({ isConnected, chatId }: ChatHeaderProps) {
   const [isShareOpen, setIsShareOpen] = useState(false);
 
   const [openCreateChat, setOpenCreateChat] = useState(false);
   const canShare = Boolean(chatId);
+  const shouldShowConnection = typeof isConnected === 'boolean';
 
   function handleCloseShare() {
     setIsShareOpen(false);
@@ -27,15 +28,17 @@ export function ChatHeader({ isConnected = false, chatId }: ChatHeaderProps) {
           <span className={chatStyles.eyebrow}>Governança de conhecimento interno</span>
           <h1 className={chatStyles.headerTitle}>Assistente de Políticas</h1>
         </div>
-        <div className={cn(
-          'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-[0.08em]',
-          isConnected
-            ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200'
-            : 'border-amber-300/20 bg-amber-400/10 text-amber-200',
-        )}>
-          <span className={cn('h-2 w-2 rounded-full', isConnected ? 'bg-emerald-300' : 'bg-amber-300')} />
-          {isConnected ? 'Conectado' : 'Reconectando'}
-        </div>
+        {shouldShowConnection && (
+          <div className={cn(
+            'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em]',
+            isConnected
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-amber-200 bg-amber-50 text-amber-800',
+          )}>
+            <span className={cn('h-2 w-2 rounded-full', isConnected ? 'bg-emerald-500' : 'bg-amber-500')} />
+            {isConnected ? 'Conectado' : 'Reconectando'}
+          </div>
+        )}
       </div>
 
       <div className={chatStyles.headerActions} aria-label="Ações do chat">

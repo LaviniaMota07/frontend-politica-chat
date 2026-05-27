@@ -16,6 +16,7 @@ interface UseChatSendParams {
   selectedSystems: number[];
   user: ChatUser;
   socketRef: ChatSocketRef;
+  isConnected: boolean;
   setInputValueState: Dispatch<SetStateAction<string>>;
   setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
 }
@@ -28,6 +29,7 @@ export function useChatSend({
   selectedSystems,
   user,
   socketRef,
+  isConnected,
   setInputValueState,
   setMessages,
 }: UseChatSendParams) {
@@ -37,7 +39,17 @@ export function useChatSend({
   const handleSendMessage = useCallback(async () => {
     const trimmed = inputValue.trim();
 
-    if (!trimmed || isSendingRef.current || !socketRef.current) return;
+    if (!trimmed || isSendingRef.current) return;
+
+    if (modelIaId <= 0) {
+      toast.error('Nenhum modelo de IA ativo foi encontrado. Cadastre um modelo antes de enviar mensagens.');
+      return;
+    }
+
+    if (!socketRef.current || !isConnected || !socketRef.current.connected) {
+      toast.error('Conexão com o chat indisponível. Faça login novamente ou aguarde reconectar.');
+      return;
+    }
 
     isSendingRef.current = true;
     setIsSending(true);
@@ -78,6 +90,7 @@ export function useChatSend({
   }, [
     chatId,
     inputValue,
+    isConnected,
     modelIaId,
     selectedDepartments,
     selectedSystems,

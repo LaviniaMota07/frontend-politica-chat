@@ -80,7 +80,7 @@ const InviteByEmail = ({ register, error, setValue, resetSignal = 0 }: InviteByE
 
   return (
     <div className="px-6 pb-5">
-      <span className="mb-2 block text-xs font-black uppercase tracking-[0.1em] text-slate-500">Adicionar por e-mail</span>
+      <span className="mb-2 block text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Adicionar por e-mail</span>
       <div className="flex gap-3 max-[640px]:flex-col">
         <div className="relative flex-1">
           <input
@@ -98,23 +98,23 @@ const InviteByEmail = ({ register, error, setValue, resetSignal = 0 }: InviteByE
             <button
               type="button"
               onClick={handleClearSelection}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-500 transition hover:bg-white/[0.06] hover:text-slate-200"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-[var(--text-muted)] transition hover:bg-[var(--accent-soft)] hover:text-[var(--accent-strong)]"
             >
               <X size={14} />
             </button>
           )}
           {showSuggestions && suggestions.length > 0 && (
             <ul
-              className="absolute left-0 right-0 top-[calc(100%+6px)] z-10 max-h-52 list-none overflow-y-auto rounded-2xl border border-white/10 bg-[#101827] p-1 shadow-[0_18px_44px_rgba(0,0,0,0.35)]"
+              className="absolute left-0 right-0 top-[calc(100%+6px)] z-10 max-h-52 list-none overflow-y-auto rounded-2xl border border-[var(--border-neutral)] bg-[var(--bg-elevated)] p-1 shadow-[0_18px_50px_rgba(31,29,25,0.12)]"
             >
               {suggestions.map((user) => (
                 <li
                   key={user.userId}
                   onClick={() => handleSelectUser(user)}
-                  className="flex cursor-pointer flex-col gap-0.5 rounded-xl px-3 py-2 transition hover:bg-white/[0.06]"
+                  className="flex cursor-pointer flex-col gap-0.5 rounded-xl px-3 py-2 transition hover:bg-[var(--accent-soft)]"
                 >
-                  <span className="text-sm font-bold text-slate-100">{user.name}</span>
-                  <span className="text-xs text-slate-500">{user.email}</span>
+                  <span className="text-sm font-bold text-[var(--text-primary)]">{user.name}</span>
+                  <span className="text-xs text-[var(--text-muted)]">{user.email}</span>
                 </li>
               ))}
             </ul>

@@ -1,3 +1,4 @@
+import { FileText } from 'lucide-react';
 import type { ChatMessage } from '../types/chat.types';
 import { formatTime } from '../utils/chat.helpers';
 import { cn } from '../../../utils/classNames';
@@ -10,22 +11,22 @@ interface ChatMessageBubbleProps {
 function AssistantAvatarIcon() {
   return (
     <svg
-      width="40"
-      height="40"
-      viewBox="0 0 40 40"
+      width="36"
+      height="36"
+      viewBox="0 0 36 36"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <circle cx="20" cy="20" r="20" fill="#2F6EF2" />
-      <rect x="13.5" y="14.5" width="13" height="11" rx="2.5" stroke="white" strokeWidth="1.9" />
-      <path d="M20 11V14.5" stroke="white" strokeWidth="1.9" strokeLinecap="round" />
-      <path d="M10.8 20H13.5" stroke="white" strokeWidth="1.9" strokeLinecap="round" />
-      <path d="M26.5 20H29.2" stroke="white" strokeWidth="1.9" strokeLinecap="round" />
-      <path d="M16.4 28V25.5" stroke="white" strokeWidth="1.9" strokeLinecap="round" />
-      <path d="M23.6 28V25.5" stroke="white" strokeWidth="1.9" strokeLinecap="round" />
-      <circle cx="17.9" cy="19.6" r="1.15" fill="white" />
-      <circle cx="22.1" cy="19.6" r="1.15" fill="white" />
+      <rect width="36" height="36" rx="10" fill="#20231f" />
+      <rect x="11" y="12" width="14" height="12" rx="2.5" stroke="#fbf6ea" strokeWidth="1.7" />
+      <path d="M18 9V12" stroke="#fbf6ea" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M8.5 18H11" stroke="#fbf6ea" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M25 18H27.5" stroke="#fbf6ea" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M14.5 27V24" stroke="#fbf6ea" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M21.5 27V24" stroke="#fbf6ea" strokeWidth="1.7" strokeLinecap="round" />
+      <circle cx="15.8" cy="17.8" r="1.1" fill="#fbf6ea" />
+      <circle cx="20.2" cy="17.8" r="1.1" fill="#fbf6ea" />
     </svg>
   );
 }
@@ -33,16 +34,16 @@ function AssistantAvatarIcon() {
 function PersonAvatarIcon() {
   return (
     <svg
-      width="40"
-      height="40"
-      viewBox="0 0 40 40"
+      width="36"
+      height="36"
+      viewBox="0 0 36 36"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <circle cx="20" cy="20" r="20" fill="#10B981" />
-      <circle cx="20" cy="16" r="6" fill="white" />
-      <path d="M20 24C14.4772 24 10 28.4772 10 34H30C30 28.4772 25.5228 24 20 24Z" fill="white" />
+      <rect width="36" height="36" rx="10" fill="#efe0cf" />
+      <circle cx="18" cy="14" r="5" fill="#a86535" />
+      <path d="M18 21C12.477 21 8 25.03 8 30H28C28 25.03 23.523 21 18 21Z" fill="#a86535" />
     </svg>
   );
 }
@@ -66,16 +67,17 @@ export function ChatMessageBubble({ message, currentUserId }: ChatMessageBubbleP
 
       <div className={cn('flex max-w-[76%] flex-col gap-2 max-[700px]:max-w-[90%]', isLeftAligned ? 'items-start' : 'items-end')}>
         {(isAssistant || isOtherUser) && (
-          <span className="text-xs font-black uppercase tracking-[0.08em] text-slate-500">
+          <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
             {isAssistant ? message.modelIaName : message.userName || 'Usuário'}
           </span>
         )}
+
         <div className={cn(
-          'rounded-[24px] px-5 py-4 shadow-[0_18px_44px_rgba(0,0,0,0.18)]',
+          'px-5 py-4',
           isLeftAligned
-            ? 'rounded-tl-md border border-white/10 bg-[#101b2e] text-slate-100'
-            : 'rounded-tr-md bg-blue-500 text-white',
-          isProcessing && 'animate-pulse',
+            ? 'rounded-[18px_18px_18px_6px] border border-[var(--border-neutral)] bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[0_2px_12px_rgba(31,29,25,0.06)]'
+            : 'rounded-[18px_18px_6px_18px] bg-[var(--accent)] text-[var(--text-inverse)]',
+          isProcessing && 'opacity-60',
         )}>
           <p className="whitespace-pre-wrap text-sm leading-7">{message.messageText}</p>
         </div>
@@ -83,20 +85,15 @@ export function ChatMessageBubble({ message, currentUserId }: ChatMessageBubbleP
         {isAssistant && message.sources && message.sources.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {message.sources.map((source) => (
-              <span key={source.id} className="rounded-full border border-blue-300/20 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-200">
+              <span key={source.id} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-neutral)] bg-[var(--bg-surface)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]">
+                <FileText size={12} strokeWidth={1.8} />
                 {source.title}
               </span>
             ))}
           </div>
         )}
 
-        {isAssistant && !isProcessing && (!message.sources || message.sources.length === 0) && (
-          <div className="text-xs text-slate-500">
-            Fontes ainda não foram enviadas pelo backend.
-          </div>
-        )}
-
-        <span className="text-[0.7rem] font-semibold text-slate-600">{formatTime(message.sendAt)}</span>
+        <span className="text-[0.7rem] font-medium text-[var(--text-muted)]">{formatTime(message.sendAt)}</span>
       </div>
     </div>
   );

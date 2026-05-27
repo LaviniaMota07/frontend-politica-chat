@@ -93,7 +93,7 @@ const ChatMenu = ({title, emptyMessage, handleGetChat}:ChatMenuProp) => {
     <section className={sidebarStyles.section} aria-label={title}>
         <button
             type="button"
-            className="flex w-full items-center justify-between gap-3 text-sm font-black text-slate-100"
+            className="flex w-full items-center justify-between gap-3 text-sm font-bold text-[var(--text-inverse)]"
             onClick={() => setIsConversationHistoryOpen((current) => !current)}
             aria-expanded={isConversationHistoryOpen}
         >
@@ -116,23 +116,28 @@ const ChatMenu = ({title, emptyMessage, handleGetChat}:ChatMenuProp) => {
                 />
             </label>
 
-            {errors.query && <p className="mt-2 text-xs font-semibold text-red-300">{errors.query.message}</p>}
+            {errors.query && <p className="mt-2 text-xs font-semibold text-red-400">{errors.query.message}</p>}
 
-            <nav className="mt-3 flex max-h-52 flex-col gap-1 overflow-y-auto" ref={scrollContainerRef}>
+            <nav className="mt-3 flex max-h-52 flex-col gap-1 overflow-y-auto pr-1" ref={scrollContainerRef}>
                 {filteredChats.map((item) => (
-                    <NavLink to={`/chat/${item.chatId}`} className={sidebarStyles.navLink} key={item.chatId}>
+                    <NavLink
+                        to={`/chat/${item.chatId}`}
+                        className={`${sidebarStyles.navLink} border border-transparent`}
+                        key={item.chatId}
+                        title={item.title}
+                    >
                         <MessageSquare size={17} strokeWidth={1.8} />
-                        <span>{item.title}</span>
+                        <span className="truncate">{item.title}</span>
                     </NavLink>
                 ))}
             </nav>
 
             {isLoading && (
-                <p className="mt-3 text-sm text-slate-500">Carregando conversas...</p>
+                <p className="mt-3 text-sm text-[var(--text-inverse)]/50">Carregando conversas...</p>
             )}
 
             {!isLoading && hasLoaded && filteredChats.length === 0 && (
-                <p className="mt-3 text-sm text-slate-500">{emptyMessage}</p>
+                <p className="mt-3 text-sm text-[var(--text-inverse)]/50">{emptyMessage}</p>
             )}
             </>
         )}

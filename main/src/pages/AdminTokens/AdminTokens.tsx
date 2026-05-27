@@ -237,20 +237,20 @@ export default function AdminTokens() {
             {
               label: 'Modelos Ativos',
               value: models.length,
-              description: <span className="mt-2 block text-xs text-slate-500">Modelos retornados por /model-ia</span>,
-              icon: <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500/15 text-blue-200"><Database size={17} /></span>,
+              description: <span className="mt-2 block text-xs text-[var(--text-muted)]">Modelos retornados por /model-ia</span>,
+              icon: <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border-neutral)] bg-[var(--accent-soft)] text-[var(--accent-strong)]"><Database size={17} /></span>,
             },
             {
               label: 'Tokens Configurados',
               value: formatTokens(totalConfiguredTokens),
-              description: <span className="mt-2 inline-flex items-center gap-1 text-xs text-amber-200"><Zap size={13} /> Soma de qtnToken das chaves ativas</span>,
-              icon: <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-200"><Zap size={17} /></span>,
+              description: <span className="mt-2 inline-flex items-center gap-1 text-xs text-amber-700"><Zap size={13} /> Soma de qtnToken das chaves ativas</span>,
+              icon: <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700"><Zap size={17} /></span>,
             },
             {
               label: 'Chaves Ativas',
               value: activeKeys,
-              description: <span className="mt-2 inline-flex items-center gap-1 text-xs text-emerald-200"><Coins size={13} /> Média: {formatTokens(averageTokensPerKey)} tokens</span>,
-              icon: <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-200"><Coins size={17} /></span>,
+              description: <span className="mt-2 inline-flex items-center gap-1 text-xs text-emerald-700"><Coins size={13} /> Média: {formatTokens(averageTokensPerKey)} tokens</span>,
+              icon: <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700"><Coins size={17} /></span>,
             },
           ]}
         />
@@ -288,7 +288,7 @@ export default function AdminTokens() {
 
             <div>
               <label className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={17} />
+                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={17} />
                 <input
                   className={`${formStyles.input} min-w-[260px] pl-10`}
                   type="text"
@@ -317,11 +317,11 @@ export default function AdminTokens() {
                 </td>
                 <td className={adminStyles.td}>
                   <div className={adminStyles.userCell}>
-                    <strong className={adminStyles.userName}>{previewModelKey(key.modelKey)}</strong>
+                    <strong className={adminStyles.monoValue}>{previewModelKey(key.modelKey)}</strong>
                     <span className={adminStyles.userEmail}>Chave UUID gerada pelo backend</span>
                   </div>
                 </td>
-                <td className={adminStyles.td}><strong className="font-black text-amber-200">{formatTokens(key.qtnToken)}</strong></td>
+                <td className={adminStyles.td}><strong className="font-bold text-amber-700">{formatTokens(key.qtnToken)}</strong></td>
                 <td className={adminStyles.td}>
                   <div className="flex items-center gap-2">
                     <button

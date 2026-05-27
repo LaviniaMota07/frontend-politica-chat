@@ -1,18 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { useCallback } from 'react';
+import { NavLink } from 'react-router-dom';
 import {
   FileText,
   Grid2X2,
   KeyRound,
   Layers3,
-  PanelLeftClose,
-  PanelLeftOpen,
   Pencil,
   ShieldCheck,
   Upload,
   UserCog,
   X,
 } from 'lucide-react';
+import { useRef, useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFetch } from '../../hooks/useFetch';
 import ChatMenu from './components/chat/Chat';
@@ -27,7 +26,6 @@ import { cn } from '../../utils/classNames';
 
 interface AddPolicyModalProps {
   onClose: () => void;
-  // onSubmit: (data: PolicyFormData) => void;
 }
 
 function AddPolicyModal({ onClose }: AddPolicyModalProps) {
@@ -62,7 +60,6 @@ function AddPolicyModal({ onClose }: AddPolicyModalProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // onSubmit({ file, departmentIds: selectedDepartments, systemIds: selectedSystems });
     onClose();
   }
 
@@ -78,10 +75,9 @@ function AddPolicyModal({ onClose }: AddPolicyModalProps) {
       aria-labelledby="apm-title"
     >
       <div className={modalStyles.formPanel}>
-        {/* Header */}
         <div className={modalStyles.header}>
           <div className="flex items-center gap-3">
-            <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-500/10 text-blue-200">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border-neutral)] bg-[var(--accent-soft)] text-[var(--accent-strong)]">
               <FileText size={16} strokeWidth={1.8} />
             </div>
             <h2 id="apm-title" className={modalStyles.title}>Adicionar Política / Norma</h2>
@@ -92,14 +88,13 @@ function AddPolicyModal({ onClose }: AddPolicyModalProps) {
         </div>
 
         <form onSubmit={handleSubmit} className={modalStyles.body}>
-          {/* File upload */}
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-black uppercase tracking-[0.1em] text-slate-500">Arquivo</p>
+            <p className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Arquivo</p>
             <div
               className={cn(
-                'flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-6 text-center outline-none transition hover:border-blue-300/45 hover:bg-blue-500/10 focus-visible:border-blue-300/45 focus-visible:ring-4 focus-visible:ring-blue-500/10',
-                dragOver && 'border-blue-400 bg-blue-500/15 ring-4 ring-blue-500/10',
-                file && 'border-solid border-blue-300/35 bg-blue-500/10',
+                'flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed border-[var(--border-neutral)] bg-[var(--bg-body)] px-4 py-6 text-center outline-none transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus-visible:border-[var(--accent)] focus-visible:ring-4 focus-visible:ring-[rgba(168,101,53,0.12)]',
+                dragOver && 'border-solid border-[var(--accent)] bg-[var(--accent-soft)] ring-4 ring-[rgba(168,101,53,0.12)]',
+                file && 'border-solid border-[var(--accent)] bg-[var(--accent-soft)]',
               )}
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -118,40 +113,37 @@ function AddPolicyModal({ onClose }: AddPolicyModalProps) {
                 className="hidden"
               />
               <div className={cn(
-                'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-500 transition',
-                file && 'border-blue-300/25 bg-blue-500/15 text-blue-200',
+                'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border-neutral)] bg-[var(--bg-surface)] text-[var(--text-muted)] transition',
+                file && 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]',
               )}>
                 <Upload size={18} strokeWidth={1.6} />
               </div>
               {file ? (
-                <span className="break-all text-sm font-bold text-blue-200">{file.name}</span>
+                <span className="break-all text-sm font-bold text-[var(--accent-strong)]">{file.name}</span>
               ) : (
                 <>
-                  <span className="text-sm text-slate-300">Arraste um arquivo ou clique para selecionar</span>
-                  <span className="text-xs uppercase tracking-[0.08em] text-slate-500">PDF · DOC · DOCX · TXT</span>
+                  <span className="text-sm text-[var(--text-secondary)]">Arraste um arquivo ou clique para selecionar</span>
+                  <span className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">PDF · DOC · DOCX · TXT</span>
                 </>
               )}
             </div>
           </div>
 
-          {/* Departments */}
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-black uppercase tracking-[0.1em] text-slate-500">Departamentos responsáveis</p>
+            <p className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Departamentos responsáveis</p>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Selecionar departamentos">
-              <span className="text-xs text-slate-500">Seleção pendente de integração com catálogos.</span>
+              <span className="text-xs text-[var(--text-muted)]">Seleção pendente de integração com catálogos.</span>
             </div>
           </div>
 
-          {/* Systems */}
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-black uppercase tracking-[0.1em] text-slate-500">Sistemas integrados</p>
+            <p className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Sistemas integrados</p>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Selecionar sistemas">
-              <span className="text-xs text-slate-500">Seleção pendente de integração com catálogos.</span>
+              <span className="text-xs text-[var(--text-muted)]">Seleção pendente de integração com catálogos.</span>
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 border-t border-white/10 pt-5">
+          <div className="flex justify-end gap-3 border-t border-[var(--border-neutral)] pt-5">
             <button type="button" className={buttonStyles.secondary} onClick={onClose}>
               Cancelar
             </button>
@@ -171,83 +163,40 @@ function AddPolicyModal({ onClose }: AddPolicyModalProps) {
 
 export default function Sidebar() {
   const { user } = useAuth();
-  const location = useLocation();
   const isAdmin = user.role === '1';
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
-  const { get } = useFetch<ChatListResponse>()  
-  const handleGetMyChats = useCallback(async (lastChatId?:string): Promise<ChatListResponse> => {
+  const { get } = useFetch<ChatListResponse>();
 
-    let url = `/chat/scrolling`
+  const handleGetMyChats = useCallback(async (lastChatId?: string): Promise<ChatListResponse> => {
+    let url = `/chat/scrolling`;
+    if (lastChatId) url += `?lastChatId=${lastChatId}`;
+    const response = await get(url);
+    return response ?? { data: [], finished: true };
+  }, [get]);
 
-    if(lastChatId) {
-      url+=`?lastChatId=${lastChatId}`
-    }
-
-    const response = await get(url)
-
-    return response ?? { data: [], finished: true }
-  }, [get])
-
-  const handleGetSharedChats = useCallback(async (lastChatId?:string): Promise<ChatListResponse> => {
-
-    let url = `/chat/shared-scrolling`
-
-    if(lastChatId) {
-      url+=`?lastChatId=${lastChatId}`
-    }
-
-    const response = await get(url)
-
-    return response ?? { data: [], finished: true }
-  }, [get])
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 900px)');
-
-    function handleViewportChange() {
-      setIsMobile(mediaQuery.matches);
-      setIsCollapsed(mediaQuery.matches);
-    }
-
-    handleViewportChange();
-    mediaQuery.addEventListener('change', handleViewportChange);
-    return () => mediaQuery.removeEventListener('change', handleViewportChange);
-  }, []);
-
-  useEffect(() => {
-    if (isMobile) {
-      queueMicrotask(() => setIsCollapsed(true));
-    }
-  }, [isMobile, location.pathname]);
-
-  const sidebarClassName = cn(sidebarStyles.aside, isCollapsed && sidebarStyles.collapsed);
+  const handleGetSharedChats = useCallback(async (lastChatId?: string): Promise<ChatListResponse> => {
+    let url = `/chat/shared-scrolling`;
+    if (lastChatId) url += `?lastChatId=${lastChatId}`;
+    const response = await get(url);
+    return response ?? { data: [], finished: true };
+  }, [get]);
 
   return (
     <>
-      <aside className={sidebarClassName} aria-label="Navegação principal">
+      <aside className={sidebarStyles.aside} aria-label="Navegação principal">
         <div className={sidebarStyles.topIcons}>
-          <NavLink to="/chat" className={sidebarStyles.brand} aria-label="Ir para o chat">
-            <ShieldCheck size={20} strokeWidth={1.8} />
+          <NavLink to="/chat" className="flex min-w-0 flex-1 items-center gap-3" aria-label="Ir para o chat">
+            <span className={sidebarStyles.brand}>
+              <ShieldCheck size={20} strokeWidth={1.8} />
+            </span>
+            <span className={sidebarStyles.brandText}>
+              <span className={sidebarStyles.brandName}>Norma AI</span>
+              <span className={sidebarStyles.brandCaption}>Chat de Documentos</span>
+            </span>
           </NavLink>
-
-          <button
-            type="button"
-            className={sidebarStyles.iconButton}
-            onClick={() => setIsCollapsed((current) => !current)}
-            aria-label={isCollapsed ? 'Abrir sidebar' : 'Fechar sidebar'}
-            aria-expanded={!isCollapsed}
-          >
-            {isCollapsed ? (
-              <PanelLeftOpen size={19} strokeWidth={1.8} />
-            ) : (
-              <PanelLeftClose size={19} strokeWidth={1.8} />
-            )}
-          </button>
         </div>
 
-        <div className={cn(sidebarStyles.content, isCollapsed && 'pointer-events-none opacity-0')} aria-hidden={isCollapsed}>
+        <div className={sidebarStyles.content}>
           <div className={sidebarStyles.divider} />
 
           <section className={sidebarStyles.section}>
@@ -317,13 +266,6 @@ export default function Sidebar() {
             handleGetChat={handleGetSharedChats}
           />
 
-          <div className={sidebarStyles.savedEmpty}>
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04] text-slate-500">
-              <FileText size={23} strokeWidth={1.8} />
-            </div>
-            <p>As políticas salvas vão aparecer aqui.</p>
-          </div>
-
           <section className={sidebarStyles.profileCard} aria-label="Perfil do usuário">
             <div className={sidebarStyles.profileInfo}>
               <strong className={sidebarStyles.profileName}>{user.name}</strong>
@@ -338,16 +280,6 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {isMobile && !isCollapsed && (
-        <button
-          type="button"
-          className={sidebarStyles.backdrop}
-          aria-label="Fechar sidebar"
-          onClick={() => setIsCollapsed(true)}
-        />
-      )}
-
-      {/* ── Modal ── */}
       {isPolicyModalOpen && (
         <AddPolicyModal
           onClose={() => setIsPolicyModalOpen(false)}

@@ -279,13 +279,13 @@ export default function AdminUsers() {
       >
         {editingUser && (
           <>
-            <div className="mx-6 mt-5 flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-sm text-slate-400">
+            <div className="mx-6 mt-5 flex flex-col gap-1 rounded-2xl border border-[var(--border-neutral)] bg-[var(--bg-body)] p-4 text-sm text-[var(--text-secondary)]">
               <span>{editingUser.email}</span>
-              <strong className="text-slate-100">{editingUser.department}</strong>
+              <strong className="text-[var(--text-primary)]">{editingUser.department}</strong>
             </div>
 
             <fieldset className={modalStyles.body}>
-              <legend className="text-xs font-black uppercase tracking-[0.1em] text-slate-500">Novo papel</legend>
+              <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Novo papel</legend>
 
               <label className={modalStyles.option}>
                 <input
@@ -317,7 +317,7 @@ export default function AdminUsers() {
             </fieldset>
 
             <fieldset className={modalStyles.body}>
-              <legend className="text-xs font-black uppercase tracking-[0.1em] text-slate-500">Status do usuário</legend>
+              <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Status do usuário</legend>
 
               <label className={modalStyles.option}>
                 <input
@@ -416,7 +416,7 @@ export default function AdminUsers() {
         </div>
 
         <fieldset className={modalStyles.body}>
-          <legend className="text-xs font-black uppercase tracking-[0.1em] text-slate-500">Papel inicial</legend>
+          <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Papel inicial</legend>
 
               <label className={modalStyles.option}>
                 <input

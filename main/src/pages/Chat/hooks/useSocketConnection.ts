@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { io, type Socket } from 'socket.io-client';
+import { notifyUnauthorizedSession } from '../../../utils/authSession';
 import type { ClientToServerChatEvents, ServerToClientChatEvents } from '../types/chat.types';
 
 const SOCKET_URL = (import.meta.env.VITE_URL_API || 'http://localhost:8080') + '/chat';
@@ -44,7 +45,10 @@ export function useSocketConnection({
     socket.on('connect', () => {
       if (cancelled) {
         socket.disconnect();
+        return;
       }
+
+      isConnectingRef.current = false;
     });
 
     socket.on('connected', (payload) => {
@@ -58,8 +62,22 @@ export function useSocketConnection({
       }
     });
 
-    socket.on('disconnect', () => {
+    socket.on('connect_error', () => {
+      if (cancelled) return;
+
+      isConnectingRef.current = false;
       setIsConnected(false);
+    });
+
+    socket.on('disconnect', (reason) => {
+      if (cancelled) return;
+
+      isConnectingRef.current = false;
+      setIsConnected(false);
+
+      if (reason === 'io server disconnect') {
+        notifyUnauthorizedSession();
+      }
     });
 
     return () => {
