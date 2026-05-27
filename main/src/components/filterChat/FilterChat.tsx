@@ -33,7 +33,6 @@ export default function FilterChat({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [finish, setFinish] = useState(true);
 
-  // Carregar itens iniciais quando o componente montar
   useEffect(() => {
     (async () => {
       const fetched = await fetchItems();
@@ -42,7 +41,6 @@ export default function FilterChat({
     })();
   }, [fetchItems]);
 
-  // Paginação com scroll
   useScrolling(
     scrollContainerRef,
     async () => {

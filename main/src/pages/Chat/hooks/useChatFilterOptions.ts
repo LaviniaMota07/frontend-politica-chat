@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { FilterItem } from '../../../components/filterChat/Index';
+import type { FilterItem } from '../../../components/FilterChat/FilterChat';
 import { useCursorScroll } from '../../../hooks/useCursorScroll';
 import type { DepartmentResponse, SystemResponse } from '../types/chat.types';
 

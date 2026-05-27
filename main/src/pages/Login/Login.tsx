@@ -6,15 +6,7 @@ import { useLoginForm, type LoginFormData } from '../../hooks/forms/useLoginForm
 import { useRequestAccessForm } from '../../hooks/forms/useRequestAccessForm';
 import { useFetch } from '../../hooks/useFetch';
 import { formStyles } from '../../utils/tailwindStyles';
-
-interface LoginResponse {
-  user: {
-    userId: number;
-    name: string;
-    email: string;
-    typeUserId: number;
-  };
-}
+import type { LoginResponse } from '../../services/authApi';
 
 export default function Login() {
   const navigate = useNavigate();

@@ -145,7 +145,7 @@ export const sidebarStyles = {
   divider: 'h-px bg-white/10',
   section: 'rounded-[1.25rem] border border-white/10 bg-[var(--sidebar-soft)] p-3',
   sectionHeader: 'flex items-center justify-between gap-3 text-[var(--text-inverse)]',
-  sectionTitle: 'text-sm font-bold tracking-[-0.02em]',
+  sectionTitle: 'text-sm font-bold tracking-[-0.02em] text-white',
   newChatButton:
     `flex w-full items-center gap-2 rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-bold text-[var(--text-inverse)] transition duration-200 hover:bg-[var(--accent-strong)] active:scale-[0.98] ${focusRing}`,
   addButton:

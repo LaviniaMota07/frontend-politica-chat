@@ -1,7 +1,7 @@
 import { ArrowRight, Bot } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
-import FilterChat, { type FilterItem } from '../../../components/filterChat/Index';
+import FilterChat, { type FilterItem } from '../../../components/FilterChat/FilterChat';
 import { chatStyles } from '../../../utils/tailwindStyles';
 
 type FetchFilterItems = (lastItemId?: number) => Promise<{ data: FilterItem[]; finish: boolean }>;

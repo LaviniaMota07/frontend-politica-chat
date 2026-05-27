@@ -1,22 +1,13 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { X } from 'lucide-react';
 import { buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
 import { useChatHistory } from '../../contexts/ChatHistoryContext';
-
-const createChatSchema = z.object({
-  title: z.string().min(3, 'O título deve ter no mínimo 3 caracteres').max(100, 'O título deve ter no máximo 100 caracteres'),
-});
-
-type CreateChatFormData = z.infer<typeof createChatSchema>;
-
-interface CreateChatResponse {
-  chatId?: string;
-}
+import { createChatSchema, type CreateChatFormData } from '../../validation/chat.schema';
+import type { CreateChatResponse } from '../../services/chatApi';
 
 interface CreateChatModalProps {
   isOpen: boolean;
@@ -44,7 +35,6 @@ export default function CreateChatModal({ isOpen, onClose, chatId, initialTitle 
     },
   });
 
-  // Atualizar o valor do título quando initialTitle mudar
   useEffect(() => {
     if (initialTitle !== undefined) {
       setValue('title', initialTitle);
@@ -60,20 +50,20 @@ export default function CreateChatModal({ isOpen, onClose, chatId, initialTitle 
           body: {
             title: data.title,
           },
-          successAlert:{
-            message:"Chat atualizado!",
-            title:"Sucesso"
-          }
+          successAlert: {
+            message: 'Chat atualizado!',
+            title: 'Sucesso',
+          },
         });
       } else {
         response = await post('/chat', {
           body: {
             title: data.title,
           },
-          successAlert:{
-            message:"Chat criado!",
-            title:"Sucesso"
-          }
+          successAlert: {
+            message: 'Chat criado!',
+            title: 'Sucesso',
+          },
         });
       }
 

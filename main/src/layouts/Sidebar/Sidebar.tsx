@@ -15,11 +15,12 @@ import {
 import { useRef, useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFetch } from '../../hooks/useFetch';
-import ChatMenu from './components/chat/Chat';
+import SidebarChatMenu from './components/SidebarChatMenu';
 import type { ChatListResponse } from '../../types/chat';
 import { buttonStyles, modalStyles, sidebarStyles } from '../../utils/tailwindStyles';
-import CreateChatModal from '../../components/modalCreateChat/Index';
+import CreateChatModal from '../../components/CreateChatModal/CreateChatModal';
 import { cn } from '@/lib/utils';
+import { buildChatScrollUrl, buildSharedChatScrollUrl } from '../../services/chatApi';
 
 
 // ---------------------------------------------------------------------------
@@ -171,16 +172,12 @@ export default function Sidebar() {
   const { get } = useFetch<ChatListResponse>();
 
   const handleGetMyChats = useCallback(async (lastChatId?: string): Promise<ChatListResponse> => {
-    let url = `/chat/scrolling`;
-    if (lastChatId) url += `?lastChatId=${lastChatId}`;
-    const response = await get(url);
+    const response = await get(buildChatScrollUrl(lastChatId));
     return response ?? { data: [], finished: true };
   }, [get]);
 
   const handleGetSharedChats = useCallback(async (lastChatId?: string): Promise<ChatListResponse> => {
-    let url = `/chat/shared-scrolling`;
-    if (lastChatId) url += `?lastChatId=${lastChatId}`;
-    const response = await get(url);
+    const response = await get(buildSharedChatScrollUrl(lastChatId));
     return response ?? { data: [], finished: true };
   }, [get]);
 
@@ -266,13 +263,13 @@ export default function Sidebar() {
             </section>
           )}
 
-          <ChatMenu
+          <SidebarChatMenu
             title="Minhas conversas"
             emptyMessage="Nenhuma conversa criada por você."
             handleGetChat={handleGetMyChats}
           />
 
-          <ChatMenu
+          <SidebarChatMenu
             title="Compartilhadas comigo"
             emptyMessage="Nenhuma conversa compartilhada com você."
             handleGetChat={handleGetSharedChats}
