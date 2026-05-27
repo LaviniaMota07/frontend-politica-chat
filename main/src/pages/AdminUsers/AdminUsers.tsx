@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { UsersStats } from './components/UsersStats';
 import { UsersTable } from './components/UsersTable';
-import type { User, UserRole, UserStatus } from '../../types/user';
+import type { User, UserRole, UserStatus } from '../../interfaces/user.interface';
 import { useFetch } from '../../hooks/useFetch';
 import {
   type BackendUser,
@@ -11,6 +11,8 @@ import {
 import { AdminPagination } from '../../components/admin/AdminPagination';
 import { AdminModal } from '../../components/admin/AdminModal';
 import { adminStyles, buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
+import { useInviteUserForm } from '../../hooks/forms/useInviteUserForm';
+import type { InviteUserFormData } from '../../hooks/forms/useInviteUserForm';
 
 const USERS_PER_PAGE = 4;
 
@@ -23,13 +25,20 @@ export default function AdminUsers() {
   const [selectedRole, setSelectedRole] = useState<UserRole>('Default');
   const [selectedStatus, setSelectedStatus] = useState<UserStatus>('Ativo');
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [inviteName, setInviteName] = useState('');
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [invitePassword, setInvitePassword] = useState('');
-  const [inviteRole, setInviteRole] = useState<UserRole>('Default');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const { get, post, patch, del, loading } = useFetch();
+
+  const {
+    register: registerInvite,
+    handleSubmit: handleInviteSubmit,
+    formState: { errors: inviteErrors },
+    reset: resetInviteForm,
+    watch: watchInvite,
+    setValue: setInviteValue,
+  } = useInviteUserForm();
+
+  const inviteRole = watchInvite('role');
 
   const loadUsers = useCallback(async () => {
     setIsLoadingUsers(true);
@@ -141,21 +150,16 @@ export default function AdminUsers() {
 
   function handleCloseInviteModal() {
     setIsInviteModalOpen(false);
-    setInviteName('');
-    setInviteEmail('');
-    setInvitePassword('');
-    setInviteRole('Default');
+    resetInviteForm();
   }
 
-  async function handleInviteUser(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function handleInviteUser(data: InviteUserFormData) {
     const response = await post('/user', {
       body: {
-        name: inviteName.trim(),
-        email: inviteEmail.trim(),
-        password: invitePassword,
-        typeUserId: roleToTypeUserId(inviteRole),
+        name: data.name.trim(),
+        email: data.email.trim(),
+        password: data.password,
+        typeUserId: roleToTypeUserId(data.role),
       },
       successAlert: {
         title: 'Usuário criado',
@@ -347,7 +351,6 @@ export default function AdminUsers() {
                 </span>
               </label>
             </fieldset>
-
           </>
         )}
       </AdminModal>
@@ -359,7 +362,7 @@ export default function AdminUsers() {
         titleId="invite-modal-title"
         description="Cadastre uma pessoa diretamente no backend."
         onClose={handleCloseInviteModal}
-        onSubmit={handleInviteUser}
+        onSubmit={handleInviteSubmit(handleInviteUser)}
         actions={
           <>
             <button
@@ -381,11 +384,10 @@ export default function AdminUsers() {
             <input
               className={formStyles.input}
               type="text"
-              value={inviteName}
-              onChange={(event) => setInviteName(event.target.value)}
               placeholder="Ex: Beatriz Almeida"
-              required
+              {...registerInvite('name')}
             />
+            {inviteErrors.name && <p className={formStyles.error}>{inviteErrors.name.message}</p>}
           </label>
 
           <label className={formStyles.label}>
@@ -393,11 +395,10 @@ export default function AdminUsers() {
             <input
               className={formStyles.input}
               type="email"
-              value={inviteEmail}
-              onChange={(event) => setInviteEmail(event.target.value)}
               placeholder="nome@empresa.com"
-              required
+              {...registerInvite('email')}
             />
+            {inviteErrors.email && <p className={formStyles.error}>{inviteErrors.email.message}</p>}
           </label>
 
           <label className={formStyles.label}>
@@ -405,46 +406,41 @@ export default function AdminUsers() {
             <input
               className={formStyles.input}
               type="password"
-              value={invitePassword}
-              onChange={(event) => setInvitePassword(event.target.value)}
               placeholder="Mínimo 6 caracteres"
-              minLength={6}
-              maxLength={32}
-              required
+              {...registerInvite('password')}
             />
+            {inviteErrors.password && <p className={formStyles.error}>{inviteErrors.password.message}</p>}
           </label>
         </div>
 
         <fieldset className={modalStyles.body}>
           <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Papel inicial</legend>
 
-              <label className={modalStyles.option}>
-                <input
-                  type="radio"
-                  name="invite-role"
-                  value="Admin"
-                  checked={inviteRole === 'Admin'}
-                  onChange={() => setInviteRole('Admin')}
-                />
-                <span className={modalStyles.optionText}>
-                  <strong>Admin</strong>
-                  Acesso ao chat e páginas de gerenciamento.
-                </span>
-              </label>
+          <label className={modalStyles.option}>
+            <input
+              type="radio"
+              value="Admin"
+              checked={inviteRole === 'Admin'}
+              onChange={() => setInviteValue('role', 'Admin')}
+            />
+            <span className={modalStyles.optionText}>
+              <strong>Admin</strong>
+              Acesso ao chat e páginas de gerenciamento.
+            </span>
+          </label>
 
-              <label className={modalStyles.option}>
-                <input
-                  type="radio"
-                  name="invite-role"
-                  value="Default"
-                  checked={inviteRole === 'Default'}
-                  onChange={() => setInviteRole('Default')}
-                />
-                <span className={modalStyles.optionText}>
-                  <strong>Default</strong>
-                  Acesso apenas ao chat e fontes disponíveis.
-                </span>
-              </label>
+          <label className={modalStyles.option}>
+            <input
+              type="radio"
+              value="Default"
+              checked={inviteRole === 'Default'}
+              onChange={() => setInviteValue('role', 'Default')}
+            />
+            <span className={modalStyles.optionText}>
+              <strong>Default</strong>
+              Acesso apenas ao chat e fontes disponíveis.
+            </span>
+          </label>
         </fieldset>
       </AdminModal>
     </main>

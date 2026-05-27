@@ -1,6 +1,7 @@
-import { useCallback } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useCallback, useRef, useEffect, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
+  ArrowLeft,
   FileText,
   Grid2X2,
   KeyRound,
@@ -12,7 +13,6 @@ import {
   UserCog,
   X,
 } from 'lucide-react';
-import { useRef, useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFetch } from '../../hooks/useFetch';
 import SidebarChatMenu from './components/SidebarChatMenu';
@@ -33,8 +33,6 @@ interface AddPolicyModalProps {
 
 function AddPolicyModal({ onClose }: AddPolicyModalProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [selectedDepartments] = useState<string[]>([]);
-  const [selectedSystems] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -66,7 +64,7 @@ function AddPolicyModal({ onClose }: AddPolicyModalProps) {
     onClose();
   }
 
-  const isValid = file !== null && selectedDepartments.length > 0 && selectedSystems.length > 0;
+  const isValid = file !== null;
 
   return (
     <div
@@ -170,6 +168,9 @@ export default function Sidebar() {
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [openCreateChat, setOpenCreateChat] = useState(false);
   const { get } = useFetch<ChatListResponse>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isOnChat = location.pathname === '/chat' || location.pathname.startsWith('/chat/');
 
   const handleGetMyChats = useCallback(async (lastChatId?: string): Promise<ChatListResponse> => {
     const response = await get(buildChatScrollUrl(lastChatId));
@@ -180,6 +181,8 @@ export default function Sidebar() {
     const response = await get(buildSharedChatScrollUrl(lastChatId));
     return response ?? { data: [], finished: true };
   }, [get]);
+
+  const handleClosePolicyModal = useCallback(() => setIsPolicyModalOpen(false), []);
 
   return (
     <>
@@ -205,6 +208,17 @@ export default function Sidebar() {
             <Plus size={16} strokeWidth={2.2} />
             Nova Conversa
           </button>
+
+          {!isOnChat && (
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-(--text-inverse)/80 transition duration-200 hover:border-white/20 hover:bg-white/10 hover:text-(--text-inverse) active:scale-[0.98]"
+              onClick={() => navigate('/chat')}
+            >
+              <ArrowLeft size={16} strokeWidth={2.2} />
+              Voltar ao chat
+            </button>
+          )}
 
           <div className={sidebarStyles.divider} />
 
@@ -291,7 +305,7 @@ export default function Sidebar() {
 
       {isPolicyModalOpen && (
         <AddPolicyModal
-          onClose={() => setIsPolicyModalOpen(false)}
+          onClose={handleClosePolicyModal}
         />
       )}
 

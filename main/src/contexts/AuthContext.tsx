@@ -1,29 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useState, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { AUTH_UNAUTHORIZED_EVENT } from '../utils/authSession';
+import type { AuthUser, AuthContextData } from '../interfaces/auth.interface';
 
-type UserRole = '2' | '1';
-
-interface User {
-  userId?: number;
-  name: string;
-  email: string;
-  role: UserRole;
-  userTypeId?: UserRole;
-  typeUserId?: number;
-}
-
-interface AuthContextData {
-  user: User;
-  isAuthenticated: boolean;
-  login: (userData: User) => void;
-  updateProfile: (profile: Pick<User, 'name' | 'email'>) => void;
-  logout: () => void;
-}
+export type { AuthUser, AuthContextData };
 
 const AuthContext = createContext<AuthContextData | undefined>(undefined);
 const AUTH_USER_STORAGE_KEY = 'auth_user';
-const DEFAULT_USER: User = { name: '', email: '', role: '1', userTypeId: '1' };
+const DEFAULT_USER: AuthUser = { name: '', email: '', role: '1', userTypeId: '1' };
 
 function getStoredUser() {
   const saved = sessionStorage.getItem(AUTH_USER_STORAGE_KEY);
@@ -33,7 +17,7 @@ function getStoredUser() {
   }
 
   try {
-    return JSON.parse(saved) as User;
+    return JSON.parse(saved) as AuthUser;
   } catch {
     sessionStorage.removeItem(AUTH_USER_STORAGE_KEY);
     return null;
@@ -41,7 +25,7 @@ function getStoredUser() {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User>(() => {
+  const [user, setUser] = useState<AuthUser>(() => {
     return getStoredUser() ?? DEFAULT_USER;
   });
 
@@ -63,9 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [logout]);
 
-  function login(userData: User) {
-    const typeUserId = userData.userTypeId || String(userData.typeUserId ?? '') as UserRole;
-    const normalizedUser: User = {
+  const login = useCallback((userData: AuthUser) => {
+    const typeUserId = userData.userTypeId || String(userData.typeUserId ?? '') as AuthUser['role'];
+    const normalizedUser: AuthUser = {
       ...userData,
       role: userData.role || typeUserId || '1',
       userTypeId: typeUserId || userData.role || '1',
@@ -73,9 +57,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(normalizedUser);
     setIsAuthenticated(true);
     sessionStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(normalizedUser));
-  }
+  }, []);
 
-  function updateProfile(profile: Pick<User, 'name' | 'email'>) {
+  const updateProfile = useCallback((profile: Pick<AuthUser, 'name' | 'email'>) => {
     setUser((currentUser) => {
       const updated = {
         ...currentUser,
@@ -84,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sessionStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(updated));
       return updated;
     });
-  }
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -94,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateProfile,
       logout,
     }),
-    [user, isAuthenticated, logout]
+    [user, isAuthenticated, login, updateProfile, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

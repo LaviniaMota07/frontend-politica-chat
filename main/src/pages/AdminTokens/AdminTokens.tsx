@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Coins,
   Database,
@@ -21,6 +21,9 @@ import { AdminTable } from '../../components/admin/AdminTable';
 import { AdminPagination } from '../../components/admin/AdminPagination';
 import { AdminModal } from '../../components/admin/AdminModal';
 import { adminStyles, buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
+import { useModelForm } from '../../hooks/forms/useModelForm';
+import { useCreateKeyForm, useUpdateKeyForm } from '../../hooks/forms/useKeyForm';
+import type { CreateModelFormData, CreateKeyFormData, UpdateKeyFormData } from '../../validation/admin.schema';
 
 const TOKENS_PER_PAGE = 4;
 
@@ -37,14 +40,34 @@ export default function AdminTokens() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isModelModalOpen, setIsModelModalOpen] = useState(false);
-  const [modelName, setModelName] = useState('');
-
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
-  const [selectedModelId, setSelectedModelId] = useState('');
-  const [tokenAmount, setTokenAmount] = useState('');
-
   const [editingKey, setEditingKey] = useState<AiKeyItem | null>(null);
-  const [editingTokenAmount, setEditingTokenAmount] = useState('');
+
+  const modelForm = useModelForm();
+  const {
+    register: registerModel,
+    handleSubmit: handleModelSubmit,
+    formState: { errors: modelErrors },
+    reset: resetModelForm,
+  } = modelForm;
+
+  const [defaultModelId, setDefaultModelId] = useState('');
+  const keyForm = useCreateKeyForm(defaultModelId);
+  const {
+    register: registerKey,
+    handleSubmit: handleKeySubmit,
+    formState: { errors: keyErrors },
+    reset: resetKeyForm,
+    setValue: setKeyValue,
+  } = keyForm;
+
+  const updateKeyForm = useUpdateKeyForm();
+  const {
+    register: registerUpdateKey,
+    handleSubmit: handleUpdateKeySubmit,
+    formState: { errors: updateKeyErrors },
+    reset: resetUpdateKeyForm,
+  } = updateKeyForm;
 
   const loadTokens = useCallback(async () => {
     setIsLoading(true);
@@ -64,9 +87,12 @@ export default function AdminTokens() {
 
     setModels(modelRows);
     setKeys(keyGroups.flat());
-    setSelectedModelId((current) => current || modelRows[0]?.modelIaId.toString() || '');
+
+    const firstId = modelRows[0]?.modelIaId.toString() ?? '';
+    setDefaultModelId((current) => current || firstId);
+    setKeyValue('modelIaId', firstId);
     setIsLoading(false);
-  }, [get]);
+  }, [get, setKeyValue]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -94,6 +120,7 @@ export default function AdminTokens() {
   const pageStart = (currentPage - 1) * TOKENS_PER_PAGE;
   const pageEnd = pageStart + TOKENS_PER_PAGE;
   const paginatedKeys = filteredKeys.slice(pageStart, pageEnd);
+
   useEffect(() => {
     queueMicrotask(() => setCurrentPage(1));
   }, [search]);
@@ -104,25 +131,22 @@ export default function AdminTokens() {
 
   function closeModelModal() {
     setIsModelModalOpen(false);
-    setModelName('');
+    resetModelForm();
   }
 
   function closeKeyModal() {
     setIsKeyModalOpen(false);
-    setTokenAmount('');
-    setSelectedModelId(models[0]?.modelIaId.toString() || '');
+    resetKeyForm();
   }
 
   function closeEditKeyModal() {
     setEditingKey(null);
-    setEditingTokenAmount('');
+    resetUpdateKeyForm();
   }
 
-  async function handleCreateModel(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function handleCreateModel(data: CreateModelFormData) {
     const response = await post('/model-ia', {
-      body: { modelNm: modelName.trim() },
+      body: { modelNm: data.modelNm.trim() },
       successAlert: {
         title: 'Modelo criado',
         message: 'O modelo de IA foi cadastrado no backend.',
@@ -135,13 +159,11 @@ export default function AdminTokens() {
     }
   }
 
-  async function handleCreateKey(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function handleCreateKey(data: CreateKeyFormData) {
     const response = await post('/model-ia-key', {
       body: {
-        modelIaId: Number(selectedModelId),
-        qtnToken: Number(tokenAmount),
+        modelIaId: Number(data.modelIaId),
+        qtnToken: Number(data.qtnToken),
       },
       successAlert: {
         title: 'Chave criada',
@@ -155,9 +177,7 @@ export default function AdminTokens() {
     }
   }
 
-  async function handleUpdateKey(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function handleUpdateKey(data: UpdateKeyFormData) {
     if (!editingKey) {
       return;
     }
@@ -166,7 +186,7 @@ export default function AdminTokens() {
       body: {
         modelIaId: editingKey.modelIaId,
         modelKey: editingKey.modelKey,
-        qtnToken: Number(editingTokenAmount),
+        qtnToken: Number(data.qtnToken),
         active: true,
       },
       successAlert: {
@@ -329,7 +349,7 @@ export default function AdminTokens() {
                       className={buttonStyles.icon}
                       onClick={() => {
                         setEditingKey(key);
-                        setEditingTokenAmount(String(key.qtnToken));
+                        resetUpdateKeyForm({ qtnToken: String(key.qtnToken) });
                       }}
                       title="Editar tokens"
                     >
@@ -364,7 +384,7 @@ export default function AdminTokens() {
         titleId="model-modal-title"
         description="Cadastre o nome do modelo usado pelo backend."
         onClose={closeModelModal}
-        onSubmit={handleCreateModel}
+        onSubmit={handleModelSubmit(handleCreateModel)}
         actions={
           <>
             <button type="button" className={buttonStyles.secondary} onClick={closeModelModal}>Cancelar</button>
@@ -375,7 +395,11 @@ export default function AdminTokens() {
         <div className={`${modalStyles.body} ${adminStyles.formGrid}`}>
           <label className={formStyles.label}>
             <span>Nome do modelo</span>
-            <input className={formStyles.input} value={modelName} onChange={(event) => setModelName(event.target.value)} minLength={2} maxLength={100} required />
+            <input
+              className={formStyles.input}
+              {...registerModel('modelNm')}
+            />
+            {modelErrors.modelNm && <p className={formStyles.error}>{modelErrors.modelNm.message}</p>}
           </label>
         </div>
       </AdminModal>
@@ -387,7 +411,7 @@ export default function AdminTokens() {
         titleId="key-modal-title"
         description="O backend gera a chave e armazena a quantidade de tokens."
         onClose={closeKeyModal}
-        onSubmit={handleCreateKey}
+        onSubmit={handleKeySubmit(handleCreateKey)}
         actions={
           <>
             <button type="button" className={buttonStyles.secondary} onClick={closeKeyModal}>Cancelar</button>
@@ -398,15 +422,22 @@ export default function AdminTokens() {
         <div className={`${modalStyles.body} ${adminStyles.formGrid}`}>
           <label className={formStyles.label}>
             <span>Modelo</span>
-            <select className={formStyles.select} value={selectedModelId} onChange={(event) => setSelectedModelId(event.target.value)} required>
+            <select className={formStyles.select} {...registerKey('modelIaId')}>
               {models.map((model) => (
                 <option key={model.modelIaId} value={model.modelIaId}>{model.modelNm}</option>
               ))}
             </select>
+            {keyErrors.modelIaId && <p className={formStyles.error}>{keyErrors.modelIaId.message}</p>}
           </label>
           <label className={formStyles.label}>
             <span>Quantidade de tokens</span>
-            <input className={formStyles.input} type="number" value={tokenAmount} onChange={(event) => setTokenAmount(event.target.value)} min={1} required />
+            <input
+              className={formStyles.input}
+              type="number"
+              min={1}
+              {...registerKey('qtnToken')}
+            />
+            {keyErrors.qtnToken && <p className={formStyles.error}>{keyErrors.qtnToken.message}</p>}
           </label>
         </div>
       </AdminModal>
@@ -418,7 +449,7 @@ export default function AdminTokens() {
         titleId="edit-key-modal-title"
         description={editingKey ? `${editingKey.modelName} - ${previewModelKey(editingKey.modelKey)}` : undefined}
         onClose={closeEditKeyModal}
-        onSubmit={handleUpdateKey}
+        onSubmit={handleUpdateKeySubmit(handleUpdateKey)}
         actions={
           <>
             <button type="button" className={buttonStyles.secondary} onClick={closeEditKeyModal}>Cancelar</button>
@@ -429,7 +460,13 @@ export default function AdminTokens() {
         <div className={`${modalStyles.body} ${adminStyles.formGrid}`}>
           <label className={formStyles.label}>
             <span>Quantidade de tokens</span>
-            <input className={formStyles.input} type="number" value={editingTokenAmount} onChange={(event) => setEditingTokenAmount(event.target.value)} min={1} required />
+            <input
+              className={formStyles.input}
+              type="number"
+              min={1}
+              {...registerUpdateKey('qtnToken')}
+            />
+            {updateKeyErrors.qtnToken && <p className={formStyles.error}>{updateKeyErrors.qtnToken.message}</p>}
           </label>
         </div>
       </AdminModal>

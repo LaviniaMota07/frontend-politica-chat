@@ -5,10 +5,10 @@ import {
   type BackendDepartment,
   type BackendSystem,
   type CatalogItem,
-  type CatalogStatus,
   mapBackendDepartment,
   mapBackendSystem,
 } from '../../services/adminApi';
+import type { CatalogStatus } from '../../interfaces/admin.interface';
 import { useCursorScroll } from '../../hooks/useCursorScroll';
 import { AdminStatsGrid } from '../../components/admin/AdminStatsGrid';
 import { AdminTable } from '../../components/admin/AdminTable';
@@ -16,16 +16,12 @@ import { AdminPagination } from '../../components/admin/AdminPagination';
 import { AdminModal } from '../../components/admin/AdminModal';
 import { adminStyles, buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
 import { cn } from '@/lib/utils';
+import { useCatalogForm } from '../../hooks/forms/useCatalogForm';
+import type { CatalogFormData } from '../../hooks/forms/useCatalogForm';
 
 const ITEMS_PER_PAGE = 4;
 
 type CatalogMode = 'departments' | 'systems';
-
-const emptyForm = {
-  name: '',
-  acronym: '',
-  status: 'Ativo' as CatalogStatus,
-};
 
 interface AdminCatalogsProps {
   mode: CatalogMode;
@@ -38,11 +34,22 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CatalogItem | null>(null);
-  const [formValues, setFormValues] = useState(emptyForm);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true);
   const { post, put, patch, del, loading } = useFetch();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset: resetCatalogForm,
+    setValue,
+    watch,
+  } = useCatalogForm();
+
+  const statusValue = watch('status');
+
   const { fetchAll: fetchAllDepartments } = useCursorScroll<BackendDepartment>({
     endpoint: '/department/scrolling',
     cursorParam: 'departmentId',
@@ -105,13 +112,13 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
 
   function handleOpenCreate() {
     setEditingItem(null);
-    setFormValues(emptyForm);
+    resetCatalogForm({ name: '', acronym: '', status: 'Ativo' });
     setIsFormOpen(true);
   }
 
   function handleOpenEdit(item: CatalogItem) {
     setEditingItem(item);
-    setFormValues({
+    resetCatalogForm({
       name: item.name,
       acronym: item.acronym,
       status: item.status,
@@ -122,14 +129,12 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
   function handleCloseForm() {
     setIsFormOpen(false);
     setEditingItem(null);
-    setFormValues(emptyForm);
+    resetCatalogForm();
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function handleSubmitForm(data: CatalogFormData) {
     if (isDepartmentsTab) {
-      if (editingItem && formValues.status === 'Inativo') {
+      if (editingItem && data.status === 'Inativo') {
         await del(`/department/${editingItem.id}`, {
           successAlert: {
             title: 'Departamento desativado',
@@ -140,8 +145,8 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
         await patch(`/department/${editingItem.id}`, {
           body: {
             departmentId: editingItem.id,
-            departmentNm: formValues.name.trim(),
-            acronym: formValues.acronym.trim().toUpperCase(),
+            departmentNm: data.name.trim(),
+            acronym: data.acronym.trim().toUpperCase(),
           },
           successAlert: {
             title: 'Departamento atualizado',
@@ -151,8 +156,8 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
       } else {
         await post('/department', {
           body: {
-            departmentNm: formValues.name.trim(),
-            acronym: formValues.acronym.trim().toUpperCase(),
+            departmentNm: data.name.trim(),
+            acronym: data.acronym.trim().toUpperCase(),
           },
           successAlert: {
             title: 'Departamento criado',
@@ -160,7 +165,7 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
           },
         });
       }
-    } else if (editingItem && formValues.status === 'Inativo') {
+    } else if (editingItem && data.status === 'Inativo') {
       await del(`/systems/${editingItem.id}`, {
         successAlert: {
           title: 'Sistema desativado',
@@ -171,8 +176,8 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
       await put('/systems', {
         body: {
           systemId: editingItem.id,
-          systemNm: formValues.name.trim(),
-          acronym: formValues.acronym.trim().toUpperCase(),
+          systemNm: data.name.trim(),
+          acronym: data.acronym.trim().toUpperCase(),
         },
         successAlert: {
           title: 'Sistema atualizado',
@@ -182,8 +187,8 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
     } else {
       await post('/systems', {
         body: {
-          systemNm: formValues.name.trim(),
-          acronym: formValues.acronym.trim().toUpperCase(),
+          systemNm: data.name.trim(),
+          acronym: data.acronym.trim().toUpperCase(),
         },
         successAlert: {
           title: 'Sistema criado',
@@ -335,7 +340,7 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
         titleId="catalog-modal-title"
         description="Preencha as informações do cadastro."
         onClose={handleCloseForm}
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmit(handleSubmitForm)}
         actions={
           <>
             <button type="button" className={buttonStyles.secondary} onClick={handleCloseForm}>
@@ -353,13 +358,10 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
             <input
               className={formStyles.input}
               type="text"
-              value={formValues.name}
-              onChange={(event) =>
-                setFormValues((current) => ({ ...current, name: event.target.value }))
-              }
               placeholder={isDepartmentsTab ? 'Ex: Jurídico' : 'Ex: Portal Jurídico'}
-              required
+              {...register('name')}
             />
+            {errors.name && <p className={formStyles.error}>{errors.name.message}</p>}
           </label>
 
           <label className={formStyles.label}>
@@ -367,35 +369,25 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
             <input
               className={formStyles.input}
               type="text"
-              value={formValues.acronym}
-              onChange={(event) =>
-                setFormValues((current) => ({
-                  ...current,
-                  acronym: event.target.value.toUpperCase(),
-                }))
-              }
               placeholder={isDepartmentsTab ? 'Ex: JUR' : 'Ex: PORT'}
-              minLength={2}
-              maxLength={5}
-              required
+              {...register('acronym', {
+                onChange: (e) => setValue('acronym', e.target.value.toUpperCase()),
+              })}
             />
+            {errors.acronym && <p className={formStyles.error}>{errors.acronym.message}</p>}
           </label>
 
           <label className={formStyles.label}>
             <span>Status</span>
             <select
               className={formStyles.select}
-              value={formValues.status}
-              onChange={(event) =>
-                setFormValues((current) => ({
-                  ...current,
-                  status: event.target.value as CatalogStatus,
-                }))
-              }
+              value={statusValue}
+              onChange={(event) => setValue('status', event.target.value as CatalogStatus)}
             >
               <option value="Ativo">Ativo</option>
               <option value="Inativo">Inativo</option>
             </select>
+            {errors.status && <p className={formStyles.error}>{errors.status.message}</p>}
           </label>
         </div>
       </AdminModal>

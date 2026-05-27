@@ -3,63 +3,56 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, ArrowLeft, Save, Eye, EyeOff, X } from 'lucide-react';
 import { buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
+import { useProfileForm } from '../../hooks/forms/useProfileForm';
+import { useChangePasswordForm } from '../../hooks/forms/useChangePasswordForm';
 
 export default function ProfileEdit() {
   const { user, updateProfile } = useAuth();
   const navigate = useNavigate();
 
-  const [name, setName] = useState(user.name);
-  const [email, setEmail] = useState(user.email);
   const [saved, setSaved] = useState(false);
-
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaved, setPasswordSaved] = useState(false);
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
-  const [passwordSaved, setPasswordSaved] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateProfile({ name, email });
+  const profileForm = useProfileForm({ name: user.name, email: user.email });
+  const {
+    register: registerProfile,
+    handleSubmit: handleProfileSubmit,
+    formState: { errors: profileErrors },
+  } = profileForm;
+
+  const passwordForm = useChangePasswordForm();
+  const {
+    register: registerPassword,
+    handleSubmit: handlePasswordSubmit,
+    formState: { errors: passwordErrors },
+    reset: resetPasswordForm,
+  } = passwordForm;
+
+  function onProfileSave() {
+    const values = profileForm.getValues();
+    updateProfile({ name: values.name, email: values.email });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
-  };
+  }
 
-  const handleCloseModal = () => {
+  function handleCloseModal() {
     setShowPasswordModal(false);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setPasswordError('');
+    resetPasswordForm();
     setPasswordSaved(false);
     setShowCurrent(false);
     setShowNew(false);
     setShowConfirm(false);
-  };
+  }
 
-  const handleSavePassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPasswordError('');
-    if (!currentPassword) {
-      setPasswordError('Informe a senha atual.');
-      return;
-    }
-    if (!newPassword) {
-      setPasswordError('Informe a nova senha.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordError('As senhas não coincidem.');
-      return;
-    }
-    // updatePassword(currentPassword, newPassword) — chame sua função aqui
+  function onPasswordSave() {
+    // updatePassword(data.currentPassword, data.newPassword) — chame sua função aqui
     setPasswordSaved(true);
     setTimeout(() => handleCloseModal(), 2000);
-  };
+  }
 
   return (
     <main className="flex h-full min-h-dvh w-full overflow-y-auto bg-[var(--bg-body)] px-6 py-8 text-[var(--text-primary)] max-[700px]:px-4">
@@ -75,7 +68,7 @@ export default function ProfileEdit() {
           </div>
         </div>
 
-        <form className="flex flex-col gap-5" onSubmit={handleSave}>
+        <form className="flex flex-col gap-5" onSubmit={handleProfileSubmit(onProfileSave)}>
           <div className="flex items-center gap-4 rounded-[20px] border border-[var(--border-neutral)] bg-[var(--bg-surface)] p-5 shadow-[0_18px_50px_rgba(31,29,25,0.08)]">
             <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--border-neutral)] bg-[var(--accent-soft)] text-[var(--accent-strong)]">
               <User size={32} strokeWidth={1.5} />
@@ -92,15 +85,27 @@ export default function ProfileEdit() {
               <label className={formStyles.label}>Nome</label>
               <div className="relative">
                 <User size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                <input type="text" className={`${formStyles.input} pl-10`} value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome" required />
+                <input
+                  type="text"
+                  className={`${formStyles.input} pl-10`}
+                  placeholder="Seu nome"
+                  {...registerProfile('name')}
+                />
               </div>
+              {profileErrors.name && <p className={formStyles.error}>{profileErrors.name.message}</p>}
             </div>
             <div className="flex flex-col gap-2">
               <label className={formStyles.label}>E-mail</label>
               <div className="relative">
                 <Mail size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                <input type="email" className={`${formStyles.input} pl-10`} value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" required />
+                <input
+                  type="email"
+                  className={`${formStyles.input} pl-10`}
+                  placeholder="seu@email.com"
+                  {...registerProfile('email')}
+                />
               </div>
+              {profileErrors.email && <p className={formStyles.error}>{profileErrors.email.message}</p>}
             </div>
           </div>
 
@@ -125,10 +130,9 @@ export default function ProfileEdit() {
         </form>
       </div>
 
-      {/* ── Modal: Alterar Senha ── */}
       {showPasswordModal && (
         <div className={modalStyles.backdrop} onClick={handleCloseModal}>
-          <div className={modalStyles.formPanel} onClick={e => e.stopPropagation()}>
+          <div className={modalStyles.formPanel} onClick={(e) => e.stopPropagation()}>
             <div className={modalStyles.header}>
               <div className="flex items-center gap-3">
                 <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--border-neutral)] bg-[var(--accent-soft)] text-[var(--accent-strong)]">
@@ -141,39 +145,58 @@ export default function ProfileEdit() {
               </button>
             </div>
 
-            <form className={modalStyles.body} onSubmit={handleSavePassword}>
+            <form className={modalStyles.body} onSubmit={handlePasswordSubmit(onPasswordSave)}>
               <div className="flex flex-col gap-2">
                 <label className={formStyles.label}>Senha atual</label>
                 <div className="relative">
                   <Lock size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                  <input type={showCurrent ? 'text' : 'password'} className={`${formStyles.input} px-10`} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder="••••••••" />
-                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] transition hover:text-[var(--text-primary)]" onClick={() => setShowCurrent(o => !o)}>
+                  <input
+                    type={showCurrent ? 'text' : 'password'}
+                    className={`${formStyles.input} px-10`}
+                    placeholder="••••••••"
+                    {...registerPassword('currentPassword')}
+                  />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] transition hover:text-[var(--text-primary)]" onClick={() => setShowCurrent((o) => !o)}>
                     {showCurrent ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
+                {passwordErrors.currentPassword && <p className={formStyles.error}>{passwordErrors.currentPassword.message}</p>}
               </div>
+
               <div className="flex flex-col gap-2">
                 <label className={formStyles.label}>Nova senha</label>
                 <div className="relative">
                   <Lock size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                  <input type={showNew ? 'text' : 'password'} className={`${formStyles.input} px-10`} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••" />
-                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] transition hover:text-[var(--text-primary)]" onClick={() => setShowNew(o => !o)}>
+                  <input
+                    type={showNew ? 'text' : 'password'}
+                    className={`${formStyles.input} px-10`}
+                    placeholder="••••••••"
+                    {...registerPassword('newPassword')}
+                  />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] transition hover:text-[var(--text-primary)]" onClick={() => setShowNew((o) => !o)}>
                     {showNew ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
+                {passwordErrors.newPassword && <p className={formStyles.error}>{passwordErrors.newPassword.message}</p>}
               </div>
+
               <div className="flex flex-col gap-2">
                 <label className={formStyles.label}>Confirmar nova senha</label>
                 <div className="relative">
                   <Lock size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                  <input type={showConfirm ? 'text' : 'password'} className={`${formStyles.input} px-10`} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" />
-                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] transition hover:text-[var(--text-primary)]" onClick={() => setShowConfirm(o => !o)}>
+                  <input
+                    type={showConfirm ? 'text' : 'password'}
+                    className={`${formStyles.input} px-10`}
+                    placeholder="••••••••"
+                    {...registerPassword('confirmPassword')}
+                  />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] transition hover:text-[var(--text-primary)]" onClick={() => setShowConfirm((o) => !o)}>
                     {showConfirm ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
+                {passwordErrors.confirmPassword && <p className={formStyles.error}>{passwordErrors.confirmPassword.message}</p>}
               </div>
 
-              {passwordError && <p className={formStyles.error}>{passwordError}</p>}
               {passwordSaved && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">Senha alterada com sucesso!</div>}
 
               <div className="flex justify-end gap-3 border-t border-[var(--border-neutral)] pt-5">

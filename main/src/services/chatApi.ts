@@ -1,12 +1,4 @@
-export interface CreateChatResponse {
-  chatId?: string;
-}
-
-export interface ShareChatResponse {
-  user: {
-    name: string;
-  };
-}
+export type { CreateChatResponse, ShareChatResponse } from '../interfaces/chat.interface';
 
 export function buildChatScrollUrl(lastChatId?: string) {
   return lastChatId ? `/chat/scrolling?lastChatId=${lastChatId}` : '/chat/scrolling';

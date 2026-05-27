@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Mail, Send, ShieldCheck, X, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -14,6 +14,13 @@ export default function Login() {
   const [isRequestOpen, setIsRequestOpen] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const requestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (requestTimerRef.current !== null) clearTimeout(requestTimerRef.current);
+    };
+  }, []);
 
   const { register, handleSubmit, formState: { errors } } = useLoginForm();
   const { post, loading } = useFetch<LoginResponse>();
@@ -43,7 +50,7 @@ export default function Login() {
 
   const onRequestSubmit = () => {
     setRequestSent(true);
-    setTimeout(() => {
+    requestTimerRef.current = setTimeout(() => {
       setIsRequestOpen(false);
       setRequestSent(false);
       resetRequestForm();

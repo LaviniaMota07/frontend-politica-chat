@@ -16,14 +16,16 @@ export function ChatMessages({ messages, currentUserId, loadMoreMessages, hasMor
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const isFirstLoad = useRef(true);
 
+  const lastMessageId = messages.at(-1)?.messageId ?? null;
+
   useEffect(() => {
-    if (messages.length === 0) {
+    if (lastMessageId === null) {
       isFirstLoad.current = true;
-    } else if (isFirstLoad.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      isFirstLoad.current = false;
+      return;
     }
-  }, [messages.length]);
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    isFirstLoad.current = false;
+  }, [lastMessageId]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;

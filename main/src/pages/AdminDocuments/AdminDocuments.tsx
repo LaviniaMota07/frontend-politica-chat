@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { FileText, Link2, RefreshCcw, Upload } from 'lucide-react';
 import { useFetch } from '../../hooks/useFetch';
 import {
@@ -9,20 +9,15 @@ import {
   mapBackendDepartment,
   mapBackendSystem,
 } from '../../services/adminApi';
+import type { SessionDocument } from '../../interfaces/admin.interface';
 import { useCursorScroll } from '../../hooks/useCursorScroll';
 import { AdminStatsGrid } from '../../components/admin/AdminStatsGrid';
 import { AdminTable } from '../../components/admin/AdminTable';
 import { adminStyles, buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
-
-interface SessionDocument {
-  id: string;
-  title: string;
-  version: string;
-  status: string;
-  lastVersionId: string | null;
-  departmentIds: number[];
-  systemIds: number[];
-}
+import { useUploadDocumentForm } from '../../hooks/forms/useUploadDocumentForm';
+import { useNewVersionForm } from '../../hooks/forms/useNewVersionForm';
+import { useSyncLinksForm } from '../../hooks/forms/useSyncLinksForm';
+import type { UploadDocumentFormData, NewVersionFormData, SyncLinksFormData } from '../../validation/admin.schema';
 
 function toggleNumber(values: number[], nextValue: number) {
   return values.includes(nextValue)
@@ -37,18 +32,47 @@ export default function AdminDocuments() {
   const [sessionDocuments, setSessionDocuments] = useState<SessionDocument[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
 
-  const [title, setTitle] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFileError, setUploadFileError] = useState('');
   const [uploadDepartmentIds, setUploadDepartmentIds] = useState<number[]>([]);
   const [uploadSystemIds, setUploadSystemIds] = useState<number[]>([]);
 
-  const [versionDocumentId, setVersionDocumentId] = useState('');
-  const [versionNumber, setVersionNumber] = useState('2.0');
   const [versionFile, setVersionFile] = useState<File | null>(null);
+  const [versionFileError, setVersionFileError] = useState('');
 
-  const [syncDocumentId, setSyncDocumentId] = useState('');
   const [syncDepartmentIds, setSyncDepartmentIds] = useState<number[]>([]);
   const [syncSystemIds, setSyncSystemIds] = useState<number[]>([]);
+
+  const uploadForm = useUploadDocumentForm();
+  const {
+    register: registerUpload,
+    handleSubmit: handleUploadSubmit,
+    formState: { errors: uploadErrors },
+    reset: resetUploadForm,
+  } = uploadForm;
+
+  const versionForm = useNewVersionForm();
+  const {
+    register: registerVersion,
+    handleSubmit: handleVersionSubmit,
+    formState: { errors: versionErrors },
+    reset: resetVersionForm,
+    setValue: setVersionValue,
+    watch: watchVersion,
+  } = versionForm;
+
+  const versionDocumentId = watchVersion('fileId');
+
+  const syncForm = useSyncLinksForm();
+  const {
+    register: registerSync,
+    handleSubmit: handleSyncSubmit,
+    formState: { errors: syncErrors },
+    setValue: setSyncValue,
+    watch: watchSync,
+  } = syncForm;
+
+  const syncDocumentId = watchSync('documentId');
 
   const { fetchAll: fetchAllDepartments } = useCursorScroll<BackendDepartment>({
     endpoint: '/department/scrolling',
@@ -85,23 +109,26 @@ export default function AdminDocuments() {
   );
 
   function handleUploadFileChange(event: ChangeEvent<HTMLInputElement>) {
-    setUploadFile(event.target.files?.[0] ?? null);
+    const file = event.target.files?.[0] ?? null;
+    setUploadFile(file);
+    if (file) setUploadFileError('');
   }
 
   function handleVersionFileChange(event: ChangeEvent<HTMLInputElement>) {
-    setVersionFile(event.target.files?.[0] ?? null);
+    const file = event.target.files?.[0] ?? null;
+    setVersionFile(file);
+    if (file) setVersionFileError('');
   }
 
-  async function handleUpload(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function handleUpload(data: UploadDocumentFormData) {
     if (!uploadFile) {
+      setUploadFileError('Selecione um arquivo para enviar.');
       return;
     }
 
     const formData = new FormData();
     formData.append('file', uploadFile);
-    formData.append('title', title.trim());
+    formData.append('title', data.title.trim());
     uploadDepartmentIds.forEach((departmentId) => formData.append('departmentIds', String(departmentId)));
     uploadSystemIds.forEach((systemId) => formData.append('systemIds', String(systemId)));
 
@@ -128,27 +155,26 @@ export default function AdminDocuments() {
     };
 
     setSessionDocuments((current) => [nextDocument, ...current]);
-    setVersionDocumentId(nextDocument.id);
-    setSyncDocumentId(nextDocument.id);
+    setVersionValue('fileId', nextDocument.id);
+    setSyncValue('documentId', nextDocument.id);
     setSyncDepartmentIds(uploadDepartmentIds);
     setSyncSystemIds(uploadSystemIds);
-    setTitle('');
+    resetUploadForm();
     setUploadFile(null);
     setUploadDepartmentIds([]);
     setUploadSystemIds([]);
   }
 
-  async function handleNewVersion(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!versionFile || !versionDocumentId.trim()) {
+  async function handleNewVersion(data: NewVersionFormData) {
+    if (!versionFile) {
+      setVersionFileError('Selecione um arquivo para enviar.');
       return;
     }
 
     const formData = new FormData();
     formData.append('file', versionFile);
-    formData.append('fileId', versionDocumentId.trim());
-    formData.append('version', versionNumber.trim());
+    formData.append('fileId', data.fileId.trim());
+    formData.append('version', data.version.trim());
 
     const response = await post('/documents/new-version', {
       formData,
@@ -172,29 +198,21 @@ export default function AdminDocuments() {
         ),
       );
       setVersionFile(null);
-      setVersionNumber('2.0');
+      resetVersionForm({ fileId: data.fileId, version: '2.0' });
     }
   }
 
-  async function handleSyncLinks(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const documentId = syncDocumentId.trim();
-
-    if (!documentId) {
-      return;
-    }
-
+  async function handleSyncLinks(data: SyncLinksFormData) {
     await Promise.all([
       put('/documents/departments', {
-        body: { documentId, departmentIds: syncDepartmentIds },
+        body: { documentId: data.documentId, departmentIds: syncDepartmentIds },
         successAlert: {
           title: 'Departamentos atualizados',
           message: 'Os vínculos do documento foram sincronizados.',
         },
       }),
       put('/documents/systems', {
-        body: { documentId, systemIds: syncSystemIds },
+        body: { documentId: data.documentId, systemIds: syncSystemIds },
         successAlert: {
           title: 'Sistemas atualizados',
           message: 'Os vínculos do documento foram sincronizados.',
@@ -204,7 +222,7 @@ export default function AdminDocuments() {
 
     setSessionDocuments((current) =>
       current.map((document) =>
-        document.id === documentId
+        document.id === data.documentId
           ? { ...document, departmentIds: syncDepartmentIds, systemIds: syncSystemIds }
           : document,
       ),
@@ -212,8 +230,8 @@ export default function AdminDocuments() {
   }
 
   function handleSelectDocument(documentId: string) {
-    setSyncDocumentId(documentId);
-    setVersionDocumentId(documentId);
+    setSyncValue('documentId', documentId);
+    setVersionValue('fileId', documentId);
 
     const document = sessionDocuments.find((item) => item.id === documentId);
 
@@ -246,7 +264,7 @@ export default function AdminDocuments() {
             <h2 className={adminStyles.sectionTitle}>Ações disponíveis no backend</h2>
           </div>
 
-          <form className="mb-5 rounded-[20px] border border-[var(--border-neutral)] bg-[var(--bg-surface)]" onSubmit={handleUpload}>
+          <form className="mb-5 rounded-[20px] border border-[var(--border-neutral)] bg-[var(--bg-surface)]" onSubmit={handleUploadSubmit(handleUpload)}>
             <header className={modalStyles.header}>
               <div>
                 <h2 className={modalStyles.title}>Enviar documento</h2>
@@ -261,17 +279,15 @@ export default function AdminDocuments() {
                 <input
                   className={formStyles.input}
                   type="text"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  minLength={5}
-                  maxLength={150}
-                  required
+                  {...registerUpload('title')}
                 />
+                {uploadErrors.title && <p className={formStyles.error}>{uploadErrors.title.message}</p>}
               </label>
 
               <label className={formStyles.label}>
                 <span>Arquivo</span>
-                <input className={formStyles.input} type="file" onChange={handleUploadFileChange} required />
+                <input className={formStyles.input} type="file" onChange={handleUploadFileChange} />
+                {uploadFileError && <p className={formStyles.error}>{uploadFileError}</p>}
               </label>
             </div>
 
@@ -310,7 +326,7 @@ export default function AdminDocuments() {
             </footer>
           </form>
 
-          <form className="mb-5 rounded-[20px] border border-[var(--border-neutral)] bg-[var(--bg-surface)]" onSubmit={handleNewVersion}>
+          <form className="mb-5 rounded-[20px] border border-[var(--border-neutral)] bg-[var(--bg-surface)]" onSubmit={handleVersionSubmit(handleNewVersion)}>
             <header className={modalStyles.header}>
               <div>
                 <h2 className={modalStyles.title}>Nova versão</h2>
@@ -322,7 +338,11 @@ export default function AdminDocuments() {
             <div className={`${modalStyles.body} ${adminStyles.formGrid}`}>
               <label className={formStyles.label}>
                 <span>Documento</span>
-                <select className={formStyles.select} value={versionDocumentId} onChange={(event) => setVersionDocumentId(event.target.value)}>
+                <select
+                  className={formStyles.select}
+                  value={versionDocumentId}
+                  onChange={(event) => setVersionValue('fileId', event.target.value)}
+                >
                   <option value="">Informar manualmente abaixo</option>
                   {sessionDocuments.map((document) => (
                     <option key={document.id} value={document.id}>{document.title}</option>
@@ -335,11 +355,10 @@ export default function AdminDocuments() {
                 <input
                   className={formStyles.input}
                   type="text"
-                  value={versionDocumentId}
-                  onChange={(event) => setVersionDocumentId(event.target.value)}
                   placeholder="UUID do documento"
-                  required
+                  {...registerVersion('fileId')}
                 />
+                {versionErrors.fileId && <p className={formStyles.error}>{versionErrors.fileId.message}</p>}
               </label>
 
               <label className={formStyles.label}>
@@ -347,16 +366,15 @@ export default function AdminDocuments() {
                 <input
                   className={formStyles.input}
                   type="text"
-                  value={versionNumber}
-                  onChange={(event) => setVersionNumber(event.target.value)}
-                  maxLength={10}
-                  required
+                  {...registerVersion('version')}
                 />
+                {versionErrors.version && <p className={formStyles.error}>{versionErrors.version.message}</p>}
               </label>
 
               <label className={formStyles.label}>
                 <span>Arquivo</span>
-                <input className={formStyles.input} type="file" onChange={handleVersionFileChange} required />
+                <input className={formStyles.input} type="file" onChange={handleVersionFileChange} />
+                {versionFileError && <p className={formStyles.error}>{versionFileError}</p>}
               </label>
             </div>
 
@@ -367,7 +385,7 @@ export default function AdminDocuments() {
             </footer>
           </form>
 
-          <form className="rounded-[20px] border border-[var(--border-neutral)] bg-[var(--bg-surface)]" onSubmit={handleSyncLinks}>
+          <form className="rounded-[20px] border border-[var(--border-neutral)] bg-[var(--bg-surface)]" onSubmit={handleSyncSubmit(handleSyncLinks)}>
             <header className={modalStyles.header}>
               <div>
                 <h2 className={modalStyles.title}>Vínculos do documento</h2>
@@ -379,7 +397,11 @@ export default function AdminDocuments() {
             <div className={`${modalStyles.body} ${adminStyles.formGrid}`}>
               <label className={formStyles.label}>
                 <span>Documento da sessão</span>
-                <select className={formStyles.select} value={syncDocumentId} onChange={(event) => handleSelectDocument(event.target.value)}>
+                <select
+                  className={formStyles.select}
+                  value={syncDocumentId}
+                  onChange={(event) => handleSelectDocument(event.target.value)}
+                >
                   <option value="">Informar manualmente abaixo</option>
                   {sessionDocuments.map((document) => (
                     <option key={document.id} value={document.id}>{document.title}</option>
@@ -392,11 +414,10 @@ export default function AdminDocuments() {
                 <input
                   className={formStyles.input}
                   type="text"
-                  value={syncDocumentId}
-                  onChange={(event) => setSyncDocumentId(event.target.value)}
                   placeholder="UUID do documento"
-                  required
+                  {...registerSync('documentId')}
                 />
+                {syncErrors.documentId && <p className={formStyles.error}>{syncErrors.documentId.message}</p>}
               </label>
             </div>
 

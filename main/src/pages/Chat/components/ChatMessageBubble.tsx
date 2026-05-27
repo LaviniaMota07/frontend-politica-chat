@@ -1,3 +1,6 @@
+import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
+import remarkGfm from 'remark-gfm';
 import { FileText } from 'lucide-react';
 import type { ChatMessage } from '../types/chat.types';
 import { formatTime } from '../utils/chat.helpers';
@@ -79,7 +82,15 @@ export function ChatMessageBubble({ message, currentUserId }: ChatMessageBubbleP
             : 'rounded-[18px_18px_6px_18px] bg-[var(--accent)] text-[var(--text-inverse)]',
           isProcessing && 'opacity-60',
         )}>
-          <p className="whitespace-pre-wrap text-sm leading-7">{message.messageText}</p>
+          {isAssistant ? (
+            <div className="prose prose-sm max-w-none wrap-break-word text-sm leading-7 [&_a]:text-(--accent-strong) [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-(--border-neutral) [&_blockquote]:pl-3 [&_blockquote]:text-(--text-secondary) [&_code]:rounded [&_code]:bg-(--bg-body) [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-bold [&_h2]:mb-1.5 [&_h2]:text-sm [&_h2]:font-bold [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold [&_hr]:border-(--border-neutral) [&_li]:my-0.5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-(--bg-body) [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:font-bold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5">
+              <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                {message.messageText}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <p className="whitespace-pre-wrap wrap-break-word text-sm leading-7">{message.messageText}</p>
+          )}
         </div>
 
         {isAssistant && message.sources && message.sources.length > 0 && (

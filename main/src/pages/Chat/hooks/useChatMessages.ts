@@ -55,10 +55,9 @@ export function useChatMessages({
         if (prev.length === 0) {
           return [...mapped].reverse();
         }
-
-        setIsLoadingMore(false);
         return [...mapped].reverse().concat(prev);
       });
+      setIsLoadingMore(false);
     }
 
     function handleNewMessage(msg: NewMessageSocketPayload) {
