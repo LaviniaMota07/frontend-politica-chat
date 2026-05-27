@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { ChatMessage } from '../types/chat.types';
 import { ChatMessageBubble } from './ChatMessageBubble';
+import { chatStyles } from '../../../utils/tailwindStyles';
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -32,11 +33,17 @@ export function ChatMessages({ messages, currentUserId, loadMoreMessages, hasMor
   };
 
   return (
-    <div className="chat-messages" aria-live="polite" ref={messagesRef} onScroll={handleScroll}>
-      <div className="chat-messages-inner">
+    <div className={chatStyles.messages} aria-live="polite" ref={messagesRef} onScroll={handleScroll}>
+      <div className={chatStyles.messagesInner}>
         {isLoadingMore && (
-          <div className="loading-more-messages">
+          <div className="self-center rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-400">
             <span>Carregando mais mensagens...</span>
+          </div>
+        )}
+        {messages.length === 0 && !isLoadingMore && (
+          <div className="m-auto flex flex-col items-center rounded-3xl border border-white/10 bg-white/[0.035] p-8 text-center">
+            <strong className="text-lg font-black text-slate-100">Nenhuma mensagem carregada nesta conversa.</strong>
+            <span className="mt-2 text-sm text-slate-400">Envie uma pergunta para consultar as políticas disponíveis.</span>
           </div>
         )}
         {messages.map((message) => (

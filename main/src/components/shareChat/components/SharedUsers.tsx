@@ -1,7 +1,8 @@
 import { X } from 'lucide-react';
-import React, { useEffect, forwardRef, useImperativeHandle } from 'react'
+import { useEffect, type Dispatch, type SetStateAction } from 'react'
 import { useFetch } from '../../../hooks/useFetch';
 import { useParams } from 'react-router-dom';
+import { cn } from '../../../utils/classNames';
 
 export interface SharedUser {
     userNm: string;
@@ -11,18 +12,13 @@ export interface SharedUser {
     email: string;
 }
 
-export interface SharedUsersHandle {
-    addSharedUser: (user: SharedUser) => void;
-}
-
 interface SharedUsersProps {
+    sharedUsers: SharedUser[];
+    setSharedUsers: Dispatch<SetStateAction<SharedUser[]>>;
 }
 
-const SharedUsers = forwardRef<SharedUsersHandle, SharedUsersProps>((_, ref) => {
-
+const SharedUsers = ({ sharedUsers, setSharedUsers }: SharedUsersProps) => {
     const {chatId} = useParams()
-
-    const [sharedUsers,setSharedUsers] = React.useState<SharedUser[]>([])
 
     const {get, del} = useFetch()
 
@@ -40,54 +36,45 @@ const SharedUsers = forwardRef<SharedUsersHandle, SharedUsersProps>((_, ref) => 
 
     }
 
-    function addSharedUser(user: SharedUser) {
-        setSharedUsers(prev => [...prev, user])
-    }
-
-    useImperativeHandle(ref, () => ({
-        addSharedUser
-    }))
-
     useEffect(()=>{
         (async () => {
             if(chatId) {
-                const res = await get(`/chat/users/shared?chatId=${chatId}`) as SharedUser[]
+                const res = await get(`/chat/users/shared?chatId=${chatId}`) as SharedUser[] | null
                
-                setSharedUsers(res)
+                setSharedUsers(res ?? [])
             }
         })()
-    }, [chatId])
+    }, [chatId, get, setSharedUsers])
 
     return (
-        <section className="chat-share-users-panel">
-            <h3 className="chat-share-users-title">Pessoas com acesso</h3>
-            <ul className="chat-share-users-list">
+        <section className="rounded-3xl border border-white/10 bg-[#0c1628] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
+            <h3 className="mb-4 text-lg font-black tracking-[-0.04em] text-slate-50">Pessoas com acesso</h3>
+            <ul className="flex max-h-[520px] flex-col gap-3 overflow-y-auto">
                 {sharedUsers.map((user) => (
-                <li key={user.userId} className="chat-share-user-item">
-                    <div className="chat-share-user-avatar">
+                <li key={user.userId} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500 text-sm font-black text-white">
                     {user.userNm.charAt(0).toUpperCase()}
                     </div>
-                    <div className="chat-share-user-info">
-                    <span className="chat-share-user-name">{user.userNm}</span>
-                    <span className="chat-share-user-email">{user.email}</span>
+                    <div className="flex flex-col gap-1">
+                    <span className="font-black text-slate-100">{user.userNm}</span>
+                    <span className="text-xs text-slate-500">{user.email}</span>
                     </div>
 
                     <span
-                    className="chat-share-user-status"
-                    style={{
-                        background: user.roleChatId === 2
-                        ? 'rgba(47, 125, 246, 0.14)'
-                        : 'rgba(16, 185, 129, 0.14)',
-                        color: user.typeAccess === 'edit' ? '#7eb8ff' : '#34d399',
-                    }}
+                    className={cn(
+                        'mt-3 inline-flex rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.06em]',
+                        user.roleChatId === 2
+                        ? 'bg-blue-500/15 text-blue-200'
+                        : 'bg-emerald-500/15 text-emerald-200',
+                    )}
                     >
                     {user.roleChatId === 2 ? 'Pode editar' : 'Somente leitura'}
                     </span>
 
-                    <div className="chat-share-user-actions">
+                    <div className="mt-3">
                     <button
                         type="button"
-                        className="chat-share-user-btn remove"
+                        className="inline-flex items-center gap-2 rounded-xl border border-red-300/20 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-200 transition hover:bg-red-500/15"
                         onClick={() => handleRemoveUser(user.userId)}
                         aria-label={`Remover ${user.userNm}`}
                     >
@@ -100,8 +87,6 @@ const SharedUsers = forwardRef<SharedUsersHandle, SharedUsersProps>((_, ref) => 
             </ul>
         </section>
   )
-})
-
-SharedUsers.displayName = 'SharedUsers'
+}
 
 export default SharedUsers

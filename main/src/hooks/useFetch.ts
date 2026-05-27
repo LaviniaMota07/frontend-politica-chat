@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 
-const BASE_URL = import.meta.env.VITE_URL_API ?? '';
+const BASE_URL = import.meta.env.VITE_URL_API || 'http://localhost:8080';
 
 // ─── Tipos ────────────────────────────────────────────────────────────
 
@@ -11,7 +11,7 @@ interface SuccessAlert {
 }
 
 interface FetchOptions {
-    body?: Record<string, unknown>;
+    body?: unknown;
     formData?: FormData;
     headers?: HeadersInit;
     successAlert?: SuccessAlert;

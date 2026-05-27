@@ -7,17 +7,18 @@ const schema = z.object({
   .email("E-mail inválido"),
   permission: z.number("permissão é um campo obrigatório")
   .positive("Permissão invalida"),
-  userId:z.coerce.number("ID do usuário é um campo obrigatório")
+  userId:z.number("ID do usuário é um campo obrigatório")
 });
 
 export type ShareChatFormData = z.infer<typeof schema>;
 
 export const useShareChatForm = () => {
-    return useForm({
+    return useForm<ShareChatFormData>({
         resolver: zodResolver(schema),
         defaultValues:{
             email: "",
-            permission: undefined,
+            permission: 0,
+            userId: 0,
         }
     })
 };

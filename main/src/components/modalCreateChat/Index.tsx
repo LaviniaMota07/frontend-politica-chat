@@ -5,12 +5,18 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { X } from 'lucide-react';
+import { buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
+import { useChatHistory } from '../../contexts/ChatHistoryContext';
 
 const createChatSchema = z.object({
   title: z.string().min(3, 'O título deve ter no mínimo 3 caracteres').max(100, 'O título deve ter no máximo 100 caracteres'),
 });
 
 type CreateChatFormData = z.infer<typeof createChatSchema>;
+
+interface CreateChatResponse {
+  chatId?: string;
+}
 
 interface CreateChatModalProps {
   isOpen: boolean;
@@ -21,7 +27,8 @@ interface CreateChatModalProps {
 
 export default function CreateChatModal({ isOpen, onClose, chatId, initialTitle }: CreateChatModalProps) {
   const navigate = useNavigate();
-  const { post, put } = useFetch();
+  const { post, put } = useFetch<CreateChatResponse>();
+  const { notifyChatCreated, notifyChatUpdated } = useChatHistory();
   const isEditMode = !!chatId;
 
   const {
@@ -75,15 +82,12 @@ export default function CreateChatModal({ isOpen, onClose, chatId, initialTitle 
         onClose();
 
         if (!isEditMode) {
-          const res = response as any;
-          if (res.chatId) {
-            // Disparar evento para atualizar a sidebar
-            window.dispatchEvent(new CustomEvent('chatCreated'));
-            navigate(`/chat/${res.chatId}`);
+          if (response.chatId) {
+            notifyChatCreated();
+            navigate(`/chat/${response.chatId}`);
           }
         } else {
-          // Disparar evento para atualizar a sidebar quando editar
-          window.dispatchEvent(new CustomEvent('chatUpdated'));
+          notifyChatUpdated();
         }
       }
     } catch (error) {
@@ -94,30 +98,30 @@ export default function CreateChatModal({ isOpen, onClose, chatId, initialTitle 
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{isEditMode ? 'Editar Chat' : 'Novo Chat'}</h2>
-          <button type="button" className="modal-close-btn" onClick={onClose} aria-label="Fechar">
+    <div className={modalStyles.backdrop} onClick={onClose}>
+      <div className={modalStyles.formPanel} onClick={(e) => e.stopPropagation()}>
+        <div className={modalStyles.header}>
+          <h2 className={modalStyles.title}>{isEditMode ? 'Editar Chat' : 'Novo Chat'}</h2>
+          <button type="button" className={modalStyles.close} onClick={onClose} aria-label="Fechar">
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="modal-form">
-          <div className="modal-form-group">
+        <form onSubmit={handleSubmit(onSubmit)} className={modalStyles.body}>
+          <div className="flex flex-col gap-2">
             <label htmlFor="title">Título do Chat</label>
             <input
               id="title"
               type="text"
               placeholder="Digite o título do chat..."
               {...register('title')}
-              className="modal-input"
+              className={formStyles.input}
               disabled={isSubmitting}
             />
-            {errors.title && <span className="modal-error">{errors.title.message}</span>}
+            {errors.title && <span className={formStyles.error}>{errors.title.message}</span>}
           </div>
 
-          <button type="submit" className="modal-submit-btn" disabled={isSubmitting}>
+          <button type="submit" className={buttonStyles.primary} disabled={isSubmitting}>
             {isSubmitting ? (isEditMode ? 'Salvando...' : 'Criando...') : (isEditMode ? 'Salvar' : 'Criar Chat')}
           </button>
         </form>

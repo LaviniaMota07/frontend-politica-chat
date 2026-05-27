@@ -1,14 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ChevronDown, ChevronRight, MessageSquare } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { NavLink } from "react-router-dom"
 import z from "zod"
-import type { Chat } from "../../../../types/chat"
+import type { Chat, ChatListResponse } from "../../../../types/chat"
 import { useScrolling } from "../../../../hooks/useScrolling"
+import { formStyles, sidebarStyles } from "../../../../utils/tailwindStyles"
+import { useChatHistory } from "../../../../contexts/ChatHistoryContext"
 
 interface ChatMenuProp {
-    handleGetChat:(lastChatId?:string)=>Promise<{data:Chat[],finished:boolean}>
+    title: string
+    emptyMessage: string
+    handleGetChat:(lastChatId?:string)=>Promise<ChatListResponse>
 }
 
 const searchSchema = z.object({
@@ -16,62 +20,59 @@ const searchSchema = z.object({
 })
 
 
-const ChatMenu = ({handleGetChat}:ChatMenuProp) => {
+const ChatMenu = ({title, emptyMessage, handleGetChat}:ChatMenuProp) => {
         
     const [chats,setChats] = useState<Chat[]>([])
     const [isConversationHistoryOpen, setIsConversationHistoryOpen] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
+    const [hasLoaded, setHasLoaded] = useState(false)
     const scrollContainerRef = useRef<HTMLElement>(null)
     const finished = useRef(false)
+    const { historyVersion } = useChatHistory()
 
 
     // preciso fazer uma query quando for buscar os chats pelo title
-    const {register,formState:{errors}} = useForm({
+    const {register,watch,formState:{errors}} = useForm({
         resolver: zodResolver(searchSchema),
         defaultValues:{
             query:""
         }
     })
 
-    useEffect(()=>{
-        (async ()=>{
-            if(finished.current) return
+    const query = watch("query")
 
+    const filteredChats = useMemo(() => {
+        const normalizedQuery = query.trim().toLowerCase()
+
+        if (!normalizedQuery) {
+            return chats
+        }
+
+        return chats.filter((chat) => chat.title.toLowerCase().includes(normalizedQuery))
+    }, [chats, query])
+
+    const reloadChats = useCallback(async () => {
+        setIsLoading(true)
+        try {
+            finished.current = false
             const result = await handleGetChat()
-            setChats(result.data)
-        })()
-    },[])
-
-    // Recarregar chats quando um novo chat for criado ou atualizado
-    useEffect(() => {
-        const handleChatCreated = () => {
-            (async () => {
-                finished.current = false
-                const result = await handleGetChat()
-                setChats(result.data)
-            })()
-        }
-
-        const handleChatUpdated = () => {
-            (async () => {
-                const result = await handleGetChat()
-                setChats((prev) => {
-                    // Se já temos os chats, apenas atualizar o título se necessário
-                    if (prev.length > 0) {
-                        return result.data
-                    }
-                    return result.data
-                })
-            })()
-        }
-
-        window.addEventListener('chatCreated', handleChatCreated)
-        window.addEventListener('chatUpdated', handleChatUpdated)
-
-        return () => {
-            window.removeEventListener('chatCreated', handleChatCreated)
-            window.removeEventListener('chatUpdated', handleChatUpdated)
+            finished.current = result.finished
+            setChats(mergeUniqueChats(result.data))
+            setHasLoaded(true)
+        } finally {
+            setIsLoading(false)
         }
     }, [handleGetChat])
+
+    useEffect(()=>{
+        void reloadChats()
+    },[reloadChats])
+
+    useEffect(() => {
+        if (historyVersion > 0) {
+            void reloadChats()
+        }
+    }, [historyVersion, reloadChats])
 
 
     useScrolling(
@@ -80,7 +81,7 @@ const ChatMenu = ({handleGetChat}:ChatMenuProp) => {
             if (chats.length > 0 && !finished.current) {
                 const lastChatId = chats[chats.length - 1].chatId
                 const newChats = await handleGetChat(lastChatId)
-                setChats((prev) => [...prev, ...newChats.data])
+                setChats((prev) => mergeUniqueChats([...prev, ...newChats.data]))
                 finished.current = newChats.finished
             }
         },
@@ -89,14 +90,14 @@ const ChatMenu = ({handleGetChat}:ChatMenuProp) => {
    
     
     return (
-    <section className="sidebar-history" aria-label="Histórico de conversas">
+    <section className={sidebarStyles.section} aria-label={title}>
         <button
             type="button"
-            className="sidebar-history-toggle"
+            className="flex w-full items-center justify-between gap-3 text-sm font-black text-slate-100"
             onClick={() => setIsConversationHistoryOpen((current) => !current)}
             aria-expanded={isConversationHistoryOpen}
         >
-            <span>Histórico de Conversas</span>
+            <span>{title}</span>
             {isConversationHistoryOpen ? (
             <ChevronDown size={16} strokeWidth={1.8} />
             ) : (
@@ -106,27 +107,32 @@ const ChatMenu = ({handleGetChat}:ChatMenuProp) => {
 
         {isConversationHistoryOpen && (
             <>
-            <label className="sidebar-history-search">
+            <label className="mt-3 block">
                 <input
                 type="search"
-                placeholder="Buscar conversa"
+                placeholder={`Buscar em ${title.toLowerCase()}`}
+                className={`${formStyles.input} h-10 text-xs`}
                 {...register("query")}
                 />
             </label>
 
-            {errors.query && <p>{errors.query.message}</p>}
+            {errors.query && <p className="mt-2 text-xs font-semibold text-red-300">{errors.query.message}</p>}
 
-            <nav className="sidebar-history-list" ref={scrollContainerRef}>
-                {chats.map((item) => (
-                    <NavLink to={`/chat/${item.chatId}`} className="sidebar-history-link" key={item.chatId}>
+            <nav className="mt-3 flex max-h-52 flex-col gap-1 overflow-y-auto" ref={scrollContainerRef}>
+                {filteredChats.map((item) => (
+                    <NavLink to={`/chat/${item.chatId}`} className={sidebarStyles.navLink} key={item.chatId}>
                         <MessageSquare size={17} strokeWidth={1.8} />
                         <span>{item.title}</span>
                     </NavLink>
                 ))}
             </nav>
 
-            {chats.length === 0 && (
-                <p className="sidebar-history-empty">Nenhuma conversa encontrada.</p>
+            {isLoading && (
+                <p className="mt-3 text-sm text-slate-500">Carregando conversas...</p>
+            )}
+
+            {!isLoading && hasLoaded && filteredChats.length === 0 && (
+                <p className="mt-3 text-sm text-slate-500">{emptyMessage}</p>
             )}
             </>
         )}
@@ -135,3 +141,13 @@ const ChatMenu = ({handleGetChat}:ChatMenuProp) => {
 }
 
 export default ChatMenu
+
+function mergeUniqueChats(chats: Chat[]) {
+    const chatsById = new Map<string, Chat>()
+
+    for (const chat of chats) {
+        chatsById.set(chat.chatId, chat)
+    }
+
+    return Array.from(chatsById.values())
+}

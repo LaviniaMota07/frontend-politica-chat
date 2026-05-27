@@ -1,4 +1,3 @@
-import './App.css';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
 import AuthLayout from './layouts/AuthLayout';
@@ -13,6 +12,7 @@ import AdminDepartments, { AdminSystems } from './pages/AdminCatalogs/AdminCatal
 import AdminTokens from './pages/AdminTokens/AdminTokens';
 import ProfileEdit from './pages/ProfileEdit/ProfileEdit';
 import ProtectedRoute from './components/ProtectedRoute';
+import { ChatHistoryProvider } from './contexts/ChatHistoryContext';
 
 function App() {
   return (
@@ -26,7 +26,9 @@ function App() {
         path="/"
         element={
           <ProtectedRoute>
-            <DashboardLayout />
+            <ChatHistoryProvider>
+              <DashboardLayout />
+            </ChatHistoryProvider>
           </ProtectedRoute>
         }
       >
@@ -58,7 +60,7 @@ function App() {
         <Route
           path="admin/users"
           element={
-            <ProtectedRoute allowedRoles={['2']}>
+            <ProtectedRoute allowedRoles={['1']}>
               <AdminUsers />
             </ProtectedRoute>
           }
@@ -66,7 +68,7 @@ function App() {
         <Route
           path="admin/documents"
           element={
-            <ProtectedRoute allowedRoles={['2']}>
+            <ProtectedRoute allowedRoles={['1']}>
               <AdminDocuments />
             </ProtectedRoute>
           }
@@ -78,7 +80,7 @@ function App() {
         <Route
           path="admin/departments"
           element={
-            <ProtectedRoute allowedRoles={['2']}>
+            <ProtectedRoute allowedRoles={['1']}>
               <AdminDepartments />
             </ProtectedRoute>
           }
@@ -86,7 +88,7 @@ function App() {
         <Route
           path="admin/systems"
           element={
-            <ProtectedRoute allowedRoles={['2']}>
+            <ProtectedRoute allowedRoles={['1']}>
               <AdminSystems />
             </ProtectedRoute>
           }
@@ -94,7 +96,7 @@ function App() {
         <Route
           path="admin/tokens"
           element={
-            <ProtectedRoute allowedRoles={['2']}>
+            <ProtectedRoute allowedRoles={['1']}>
               <AdminTokens />
             </ProtectedRoute>
           }

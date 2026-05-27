@@ -1,5 +1,6 @@
 import type { ChatMessage } from '../types/chat.types';
 import { formatTime } from '../utils/chat.helpers';
+import { cn } from '../../../utils/classNames';
 
 interface ChatMessageBubbleProps {
   message: ChatMessage;
@@ -50,39 +51,52 @@ export function ChatMessageBubble({ message, currentUserId }: ChatMessageBubbleP
   const isCurrentUser = message.userId === currentUserId;
   const isAssistant = message.sender === 'assistant';
   const isOtherUser = message.sender === 'user' && !isCurrentUser;
+  const isProcessing = message.messageId === 'processing-placeholder';
 
   const showAvatar = isAssistant || isOtherUser;
   const isLeftAligned = isAssistant || isOtherUser;
 
   return (
-    <div className={`message-row ${isLeftAligned ? 'left' : 'right'}`}>
+    <div className={cn('flex w-full gap-3', isLeftAligned ? 'justify-start' : 'justify-end')}>
       {showAvatar && (
-        <div className="message-avatar" aria-hidden="true">
+        <div className="mt-6 shrink-0" aria-hidden="true">
           {isAssistant ? <AssistantAvatarIcon /> : <PersonAvatarIcon />}
         </div>
       )}
 
-      <div className="message-stack">
+      <div className={cn('flex max-w-[76%] flex-col gap-2 max-[700px]:max-w-[90%]', isLeftAligned ? 'items-start' : 'items-end')}>
         {(isAssistant || isOtherUser) && (
-          <span className="message-sender">
+          <span className="text-xs font-black uppercase tracking-[0.08em] text-slate-500">
             {isAssistant ? message.modelIaName : message.userName || 'Usuário'}
           </span>
         )}
-        <div className={`message-bubble ${isLeftAligned ? 'left' : 'right'}`}>
-          <p className="message-text">{message.messageText}</p>
+        <div className={cn(
+          'rounded-[24px] px-5 py-4 shadow-[0_18px_44px_rgba(0,0,0,0.18)]',
+          isLeftAligned
+            ? 'rounded-tl-md border border-white/10 bg-[#101b2e] text-slate-100'
+            : 'rounded-tr-md bg-blue-500 text-white',
+          isProcessing && 'animate-pulse',
+        )}>
+          <p className="whitespace-pre-wrap text-sm leading-7">{message.messageText}</p>
         </div>
 
         {isAssistant && message.sources && message.sources.length > 0 && (
-          <div className="message-sources">
+          <div className="flex flex-wrap gap-2">
             {message.sources.map((source) => (
-              <span key={source.id} className="source-chip">
+              <span key={source.id} className="rounded-full border border-blue-300/20 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-200">
                 {source.title}
               </span>
             ))}
           </div>
         )}
 
-        <span className="message-time">{formatTime(message.sendAt)}</span>
+        {isAssistant && !isProcessing && (!message.sources || message.sources.length === 0) && (
+          <div className="text-xs text-slate-500">
+            Fontes ainda não foram enviadas pelo backend.
+          </div>
+        )}
+
+        <span className="text-[0.7rem] font-semibold text-slate-600">{formatTime(message.sendAt)}</span>
       </div>
     </div>
   );

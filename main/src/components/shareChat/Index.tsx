@@ -1,12 +1,13 @@
 import { X } from "lucide-react";
 import CardPermissionType from "./components/CardPermissionType";
-import { type ReactElement, useRef } from "react";
-import SharedUsers, { type SharedUsersHandle, type SharedUser } from "./components/SharedUsers";
+import { type ReactElement, useState } from "react";
+import SharedUsers, { type SharedUser } from "./components/SharedUsers";
 import CopyLinkButton from "./components/CopyLinkButton";
 import InviteByEmail from "./components/InviteByEmail";
 import { useShareChatForm, type ShareChatFormData } from "../../hooks/forms/useShareChatForm";
 import { useParams } from "react-router-dom";
 import { useFetch } from "../../hooks/useFetch";
+import { modalStyles } from "../../utils/tailwindStyles";
 
 interface ShareChatProps {
   onClose: () => void;
@@ -18,10 +19,17 @@ interface Permissions {
   description: ReactElement;
 }
 
+interface ShareChatResponse {
+  user: {
+    name: string;
+  };
+}
+
 const ShareChat = ({ onClose }: ShareChatProps) => {
   const {chatId} = useParams()
-  const {post} = useFetch()
-  const sharedUsersRef = useRef<SharedUsersHandle>(null)
+  const {post} = useFetch<ShareChatResponse>()
+  const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([])
+  const [inviteResetSignal, setInviteResetSignal] = useState(0)
   
   const { register,watch,setValue,handleSubmit,formState:{errors} } = useShareChatForm()
 
@@ -61,18 +69,25 @@ const ShareChat = ({ onClose }: ShareChatProps) => {
 
       if (response) {
         const newUser: SharedUser = {
-          userNm: (response as any).user.name, // Isso viria da resposta da API
+          userNm: response.user.name,
           typeAccess: formData.permission === 2 ? 'edit' : 'read',
           roleChatId: formData.permission,
           userId: formData.userId,
           email: formData.email
         }
-        sharedUsersRef.current?.addSharedUser(newUser)
+        setSharedUsers((currentUsers) => {
+          if (currentUsers.some((user) => user.userId === newUser.userId)) {
+            return currentUsers
+          }
+
+          return [...currentUsers, newUser]
+        })
         
         // Limpar o formulário
         setValue('email', '')
         setValue('userId', 0)
         setValue('permission', 0)
+        setInviteResetSignal((value) => value + 1)
       }
     } catch (error) {
       console.error('Erro ao compartilhar chat:', error)
@@ -80,25 +95,23 @@ const ShareChat = ({ onClose }: ShareChatProps) => {
   }
 
   return (
-    <div className="chat-share-backdrop" role="presentation">
-      <div className="chat-share-modal-wrapper">
+    <div className={modalStyles.backdrop} role="presentation">
+      <div className="grid w-full max-w-5xl grid-cols-[minmax(0,1fr)_360px] gap-5 max-[900px]:grid-cols-1">
         <form 
-          onSubmit={handleSubmit(handleSharedChat,(error) => {
-            console.log(error)
-          })}
-          className="chat-share-modal"
+          onSubmit={handleSubmit(handleSharedChat)}
+          className={modalStyles.formPanel}
           role="dialog"
           aria-modal="true"
           aria-labelledby="chat-share-title"
         >
-          <header className="chat-share-header">
+          <header className={modalStyles.header}>
             <div>
-              <h2 id="chat-share-title">Compartilhar chat</h2>
-              <p>Escolha o nível de acesso e gere um link seguro.</p>
+              <h2 id="chat-share-title" className={modalStyles.title}>Compartilhar chat</h2>
+              <p className={modalStyles.description}>Escolha o nível de acesso e gere um link seguro.</p>
             </div>
             <button
               type="button"
-              className="chat-share-close"
+              className={modalStyles.close}
               onClick={onClose}
               aria-label="Fechar compartilhamento"
             >
@@ -106,8 +119,8 @@ const ShareChat = ({ onClose }: ShareChatProps) => {
             </button>
           </header>
 
-          <fieldset className="chat-share-permissions">
-            <legend>Permissão</legend>
+          <fieldset className={modalStyles.body}>
+            <legend className="text-xs font-black uppercase tracking-[0.1em] text-slate-500">Permissão</legend>
             
             {permissions.map((permission) => (
               <CardPermissionType
@@ -121,7 +134,7 @@ const ShareChat = ({ onClose }: ShareChatProps) => {
             ))}
 
             {errors.permission && 
-              <p className="chat-share-invite-error">{errors.permission.message}</p>
+              <p className="text-xs font-semibold text-red-300">{errors.permission.message}</p>
             }
 
           </fieldset>
@@ -130,13 +143,14 @@ const ShareChat = ({ onClose }: ShareChatProps) => {
             register={register}
             error={errors.email?.message}
             setValue={setValue}
+            resetSignal={inviteResetSignal}
           />
 
           <CopyLinkButton />
         </form>
 
         {/* ── Pessoas com acesso ── */}
-        <SharedUsers ref={sharedUsersRef} />
+        <SharedUsers sharedUsers={sharedUsers} setSharedUsers={setSharedUsers} />
       </div>
     </div>
   )

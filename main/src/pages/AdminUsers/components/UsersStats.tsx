@@ -1,3 +1,5 @@
+import { AdminStatsGrid } from '../../../components/admin/AdminStatsGrid';
+
 interface UsersStatsProps {
   totalUsers: number;
   totalAdmins: number;
@@ -18,14 +20,5 @@ export function UsersStats({
     { label: 'USUÁRIOS ATIVOS', value: activeUsers.toString().padStart(2, '0') },
   ];
 
-  return (
-    <div className="stats-grid">
-      {stats.map((item) => (
-        <div key={item.label} className="stat-card">
-          <span className="stat-label">{item.label}</span>
-          <strong className="stat-value">{item.value}</strong>
-        </div>
-      ))}
-    </div>
-  );
+  return <AdminStatsGrid cards={stats} />;
 }

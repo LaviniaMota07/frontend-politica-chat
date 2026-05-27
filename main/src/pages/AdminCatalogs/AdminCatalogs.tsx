@@ -1,89 +1,29 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Edit3, Plus, Search, Trash2 } from 'lucide-react';
-import '../../styles/admin-users.css';
-import '../../styles/admin-catalogs.css';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Edit3, Plus, Search, Trash2 } from 'lucide-react';
+import { useFetch } from '../../hooks/useFetch';
+import {
+  type BackendDepartment,
+  type BackendSystem,
+  type CatalogItem,
+  type CatalogStatus,
+  mapBackendDepartment,
+  mapBackendSystem,
+} from '../../services/adminApi';
+import { useCursorScroll } from '../../hooks/useCursorScroll';
+import { AdminStatsGrid } from '../../components/admin/AdminStatsGrid';
+import { AdminTable } from '../../components/admin/AdminTable';
+import { AdminPagination } from '../../components/admin/AdminPagination';
+import { AdminModal } from '../../components/admin/AdminModal';
+import { adminStyles, buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
+import { cn } from '../../utils/classNames';
 
 const ITEMS_PER_PAGE = 4;
 
-type CatalogStatus = 'Ativo' | 'Inativo';
 type CatalogMode = 'departments' | 'systems';
-
-type Department = {
-  id: number;
-  name: string;
-  description: string;
-  manager: string;
-  status: CatalogStatus;
-};
-
-type CompanySystem = {
-  id: number;
-  name: string;
-  description: string;
-  departmentId: number;
-  url: string;
-  status: CatalogStatus;
-};
-
-type CatalogItem = Department | CompanySystem;
-
-const mockDepartments: Department[] = [
-  {
-    id: 1,
-    name: 'Recursos Humanos',
-    description: 'Políticas internas, benefícios e gestão de pessoas.',
-    manager: 'Ana Souza',
-    status: 'Ativo',
-  },
-  {
-    id: 2,
-    name: 'Tecnologia (TI)',
-    description: 'Sistemas corporativos, infraestrutura e segurança.',
-    manager: 'João Pereira',
-    status: 'Ativo',
-  },
-  {
-    id: 3,
-    name: 'Financeiro',
-    description: 'Reembolsos, pagamentos e normas fiscais.',
-    manager: 'Rafael Lima',
-    status: 'Inativo',
-  },
-];
-
-const mockSystems: CompanySystem[] = [
-  {
-    id: 1,
-    name: 'Portal RH',
-    description: 'Solicitações de férias, holerites e benefícios.',
-    departmentId: 1,
-    url: 'https://rh.empresa.com',
-    status: 'Ativo',
-  },
-  {
-    id: 2,
-    name: 'Service Desk',
-    description: 'Abertura e acompanhamento de chamados internos.',
-    departmentId: 2,
-    url: 'https://suporte.empresa.com',
-    status: 'Ativo',
-  },
-  {
-    id: 3,
-    name: 'Reembolso Online',
-    description: 'Registro e aprovação de despesas corporativas.',
-    departmentId: 3,
-    url: 'https://reembolso.empresa.com',
-    status: 'Inativo',
-  },
-];
 
 const emptyForm = {
   name: '',
-  description: '',
-  manager: '',
-  departmentId: '',
-  url: '',
+  acronym: '',
   status: 'Ativo' as CatalogStatus,
 };
 
@@ -92,8 +32,8 @@ interface AdminCatalogsProps {
 }
 
 function AdminCatalogs({ mode }: AdminCatalogsProps) {
-  const [departments, setDepartments] = useState<Department[]>(mockDepartments);
-  const [systems, setSystems] = useState<CompanySystem[]>(mockSystems);
+  const [departments, setDepartments] = useState<CatalogItem[]>([]);
+  const [systems, setSystems] = useState<CatalogItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
@@ -101,15 +41,39 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
   const [formValues, setFormValues] = useState(emptyForm);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true);
+  const { post, put, patch, del, loading } = useFetch();
+  const { fetchAll: fetchAllDepartments } = useCursorScroll<BackendDepartment>({
+    endpoint: '/department/scrolling',
+    cursorParam: 'departmentId',
+    getCursor: (department) => department.departmentId,
+  });
+  const { fetchAll: fetchAllSystems } = useCursorScroll<BackendSystem>({
+    endpoint: '/systems/scrolling',
+    cursorParam: 'systemId',
+    getCursor: (system) => system.systemId,
+  });
 
   const isDepartmentsTab = mode === 'departments';
   const currentItems = isDepartmentsTab ? departments : systems;
+
+  const loadCatalogs = useCallback(async () => {
+    setIsLoadingCatalogs(true);
+    const [departmentRows, systemRows] = await Promise.all([
+      fetchAllDepartments(),
+      fetchAllSystems(),
+    ]);
+
+    setDepartments(departmentRows.map(mapBackendDepartment));
+    setSystems(systemRows.map(mapBackendSystem));
+    setIsLoadingCatalogs(false);
+  }, [fetchAllDepartments, fetchAllSystems]);
 
   const filteredItems = useMemo(() => {
     return currentItems.filter((item) => {
       const matchesSearch =
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchTerm.toLowerCase());
+        item.acronym.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesStatus =
         statusFilter === 'Todos' || item.status === statusFilter;
@@ -122,26 +86,26 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
   const pageStart = (currentPage - 1) * ITEMS_PER_PAGE;
   const pageEnd = pageStart + ITEMS_PER_PAGE;
   const paginatedItems = filteredItems.slice(pageStart, pageEnd);
-  const firstVisibleItem = filteredItems.length === 0 ? 0 : pageStart + 1;
-  const lastVisibleItem = Math.min(pageEnd, filteredItems.length);
-
   const activeDepartments = departments.filter((item) => item.status === 'Ativo').length;
   const activeSystems = systems.filter((item) => item.status === 'Ativo').length;
 
   useEffect(() => {
-    setCurrentPage(1);
+    queueMicrotask(() => {
+      void loadCatalogs();
+    });
+  }, [loadCatalogs]);
+
+  useEffect(() => {
+    queueMicrotask(() => setCurrentPage(1));
   }, [searchTerm, statusFilter, mode]);
 
   useEffect(() => {
-    setCurrentPage((page) => Math.min(page, totalPages));
+    queueMicrotask(() => setCurrentPage((page) => Math.min(page, totalPages)));
   }, [totalPages]);
 
   function handleOpenCreate() {
     setEditingItem(null);
-    setFormValues({
-      ...emptyForm,
-      departmentId: departments[0]?.id.toString() ?? '',
-    });
+    setFormValues(emptyForm);
     setIsFormOpen(true);
   }
 
@@ -149,10 +113,7 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
     setEditingItem(item);
     setFormValues({
       name: item.name,
-      description: item.description,
-      manager: 'manager' in item ? item.manager : '',
-      departmentId: 'departmentId' in item ? item.departmentId.toString() : '',
-      url: 'url' in item ? item.url : '',
+      acronym: item.acronym,
       status: item.status,
     });
     setIsFormOpen(true);
@@ -164,105 +125,138 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
     setFormValues(emptyForm);
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (isDepartmentsTab) {
-      const nextDepartment: Department = {
-        id: editingItem?.id ?? Math.max(...departments.map((item) => item.id), 0) + 1,
-        name: formValues.name.trim(),
-        description: formValues.description.trim(),
-        manager: formValues.manager.trim(),
-        status: formValues.status,
-      };
-
-      setDepartments((current) =>
-        editingItem
-          ? current.map((item) => (item.id === editingItem.id ? nextDepartment : item))
-          : [nextDepartment, ...current]
-      );
+      if (editingItem && formValues.status === 'Inativo') {
+        await del(`/department/${editingItem.id}`, {
+          successAlert: {
+            title: 'Departamento desativado',
+            message: 'O departamento foi removido da listagem ativa.',
+          },
+        });
+      } else if (editingItem) {
+        await patch(`/department/${editingItem.id}`, {
+          body: {
+            departmentId: editingItem.id,
+            departmentNm: formValues.name.trim(),
+            acronym: formValues.acronym.trim().toUpperCase(),
+          },
+          successAlert: {
+            title: 'Departamento atualizado',
+            message: 'O cadastro foi salvo no backend.',
+          },
+        });
+      } else {
+        await post('/department', {
+          body: {
+            departmentNm: formValues.name.trim(),
+            acronym: formValues.acronym.trim().toUpperCase(),
+          },
+          successAlert: {
+            title: 'Departamento criado',
+            message: 'O cadastro foi salvo no backend.',
+          },
+        });
+      }
+    } else if (editingItem && formValues.status === 'Inativo') {
+      await del(`/systems/${editingItem.id}`, {
+        successAlert: {
+          title: 'Sistema desativado',
+          message: 'O sistema foi removido da listagem ativa.',
+        },
+      });
+    } else if (editingItem) {
+      await put('/systems', {
+        body: {
+          systemId: editingItem.id,
+          systemNm: formValues.name.trim(),
+          acronym: formValues.acronym.trim().toUpperCase(),
+        },
+        successAlert: {
+          title: 'Sistema atualizado',
+          message: 'O cadastro foi salvo no backend.',
+        },
+      });
     } else {
-      const nextSystem: CompanySystem = {
-        id: editingItem?.id ?? Math.max(...systems.map((item) => item.id), 0) + 1,
-        name: formValues.name.trim(),
-        description: formValues.description.trim(),
-        departmentId: Number(formValues.departmentId),
-        url: formValues.url.trim(),
-        status: formValues.status,
-      };
-
-      setSystems((current) =>
-        editingItem
-          ? current.map((item) => (item.id === editingItem.id ? nextSystem : item))
-          : [nextSystem, ...current]
-      );
+      await post('/systems', {
+        body: {
+          systemNm: formValues.name.trim(),
+          acronym: formValues.acronym.trim().toUpperCase(),
+        },
+        successAlert: {
+          title: 'Sistema criado',
+          message: 'O cadastro foi salvo no backend.',
+        },
+      });
     }
 
+    await loadCatalogs();
     handleCloseForm();
   }
 
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!deleteTarget) {
       return;
     }
 
     if (isDepartmentsTab) {
-      setDepartments((current) => current.filter((item) => item.id !== deleteTarget.id));
-      setSystems((current) =>
-        current.filter((item) => item.departmentId !== deleteTarget.id)
-      );
+      await del(`/department/${deleteTarget.id}`, {
+        successAlert: {
+          title: 'Departamento desativado',
+          message: 'O departamento foi removido da listagem ativa.',
+        },
+      });
     } else {
-      setSystems((current) => current.filter((item) => item.id !== deleteTarget.id));
+      await del(`/systems/${deleteTarget.id}`, {
+        successAlert: {
+          title: 'Sistema desativado',
+          message: 'O sistema foi removido da listagem ativa.',
+        },
+      });
     }
 
+    await loadCatalogs();
     setDeleteTarget(null);
   }
 
   return (
-    <main className="admin-users-page admin-catalogs-page">
-      <section className="admin-users-content">
-        <header className="admin-users-header">
+    <main className={adminStyles.page}>
+      <section className={adminStyles.content}>
+        <header className={adminStyles.header}>
           <div>
-            <h1>{isDepartmentsTab ? 'Departamentos' : 'Sistemas'}</h1>
+            <h1 className={adminStyles.title}>{isDepartmentsTab ? 'Departamentos' : 'Sistemas'}</h1>
           </div>
 
-          <div className="header-actions">
-            <button type="button" className="primary-btn" onClick={handleOpenCreate}>
+          <div className={adminStyles.headerActions}>
+            <button type="button" className={buttonStyles.primary} onClick={handleOpenCreate}>
               <Plus size={17} />
               {isDepartmentsTab ? 'Novo departamento' : 'Novo sistema'}
             </button>
           </div>
         </header>
 
-        <section className="stats-grid">
-          <article className="stat-card">
-            <span className="stat-label">Departamentos</span>
-            <strong className="stat-value">{departments.length}</strong>
-          </article>
-          <article className="stat-card">
-            <span className="stat-label">Departamentos ativos</span>
-            <strong className="stat-value">{activeDepartments}</strong>
-          </article>
-          <article className="stat-card">
-            <span className="stat-label">Sistemas</span>
-            <strong className="stat-value">{systems.length}</strong>
-          </article>
-          <article className="stat-card">
-            <span className="stat-label">Sistemas ativos</span>
-            <strong className="stat-value">{activeSystems}</strong>
-          </article>
-        </section>
+        <AdminStatsGrid
+          cards={[
+            { label: 'Departamentos', value: departments.length },
+            { label: 'Departamentos ativos', value: activeDepartments },
+            { label: 'Sistemas', value: systems.length },
+            { label: 'Sistemas ativos', value: activeSystems },
+          ]}
+        />
 
-        <section className="users-section catalog-section">
-          <div className="users-section-header catalog-section-header">
-            <h2>{isDepartmentsTab ? 'Departamentos' : 'Sistemas'}</h2>
+        <section className={adminStyles.section}>
+          <div className={adminStyles.sectionHeader}>
+            <h2 className={adminStyles.sectionTitle}>{isDepartmentsTab ? 'Departamentos' : 'Sistemas'}</h2>
 
-            <div className="filters-row">
-              <label className="catalog-search">
-                <Search size={17} />
+            <div className={adminStyles.filtersRow}>
+              <label className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={17} />
                 <input
+                  className={`${formStyles.input} ${adminStyles.filterInput} pl-10`}
                   type="text"
-                  placeholder="Buscar por nome ou descrição"
+                  placeholder="Buscar por nome ou sigla"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                 />
@@ -271,7 +265,7 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
               <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className="filter-select"
+                className={formStyles.select}
               >
                 <option value="Todos">Status: Todos</option>
                 <option value="Ativo">Ativo</option>
@@ -280,290 +274,161 @@ function AdminCatalogs({ mode }: AdminCatalogsProps) {
             </div>
           </div>
 
-          <div className="users-table-wrapper">
-            <table className="users-table catalog-table">
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Descrição</th>
-                  {isDepartmentsTab && <th>Responsável</th>}
-                  {!isDepartmentsTab && <th>URL</th>}
-                  <th>Status</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedItems.map((item) => (
-                  <tr key={`${mode}-${item.id}`}>
-                    <td>
-                      <strong className="catalog-name">{item.name}</strong>
-                    </td>
-                    <td>{item.description}</td>
-                    {'manager' in item && (
-                      <td>
-                        <span className="department-badge">{item.manager}</span>
-                      </td>
-                    )}
-                    {'url' in item && (
-                      <td>
-                        <span className="catalog-url">{item.url}</span>
-                      </td>
-                    )}
-                    <td>
-                      <span className={`status-badge ${item.status.toLowerCase()}`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="catalog-actions">
-                        <button
-                          type="button"
-                          className="catalog-icon-btn"
-                          onClick={() => handleOpenEdit(item)}
-                          aria-label={`Editar ${item.name}`}
-                          title="Editar"
-                        >
-                          <Edit3 size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          className="catalog-icon-btn danger"
-                          onClick={() => setDeleteTarget(item)}
-                          aria-label={`Excluir ${item.name}`}
-                          title="Excluir"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <AdminTable
+            columns={['Nome', 'Sigla', 'Status', 'Ações']}
+            isLoading={isLoadingCatalogs}
+            loadingMessage="Carregando cadastros..."
+            isEmpty={paginatedItems.length === 0}
+            emptyMessage="Nenhum cadastro encontrado."
+          >
+            {paginatedItems.map((item) => (
+              <tr key={`${mode}-${item.id}`}>
+                <td className={adminStyles.td}>
+                  <strong className={adminStyles.userName}>{item.name}</strong>
+                </td>
+                <td className={adminStyles.td}>{item.acronym}</td>
+                <td className={adminStyles.td}>
+                  <span className={item.status === 'Ativo' ? adminStyles.badgeActive : adminStyles.badgeBlocked}>
+                    {item.status}
+                  </span>
+                </td>
+                <td className={adminStyles.td}>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className={buttonStyles.icon}
+                      onClick={() => handleOpenEdit(item)}
+                      aria-label={`Editar ${item.name}`}
+                      title="Editar"
+                    >
+                      <Edit3 size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className={buttonStyles.iconDanger}
+                      onClick={() => setDeleteTarget(item)}
+                      aria-label={`Excluir ${item.name}`}
+                      title="Excluir"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </AdminTable>
 
-          <div className="table-pagination" aria-label="Paginação">
-            <span className="pagination-summary">
-              Mostrando {firstVisibleItem}-{lastVisibleItem} de {filteredItems.length} {isDepartmentsTab ? 'departamentos' : 'sistemas'}
-            </span>
-
-            <div className="pagination-actions">
-              <button
-                type="button"
-                className="pagination-btn"
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                disabled={currentPage === 1}
-                aria-label="Página anterior"
-                title="Página anterior"
-              >
-                <ChevronLeft size={16} />
-              </button>
-
-              <span className="pagination-page">
-                Página {currentPage} de {totalPages}
-              </span>
-
-              <button
-                type="button"
-                className="pagination-btn"
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                disabled={currentPage === totalPages}
-                aria-label="Próxima página"
-                title="Próxima página"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
+          <AdminPagination
+            currentPage={currentPage}
+            totalItems={filteredItems.length}
+            perPage={ITEMS_PER_PAGE}
+            itemLabel={isDepartmentsTab ? 'departamentos' : 'sistemas'}
+            onChange={setCurrentPage}
+          />
         </section>
       </section>
 
-      {isFormOpen && (
-        <div className="role-modal-backdrop" role="presentation">
-          <form
-            className="role-modal catalog-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="catalog-modal-title"
-            onSubmit={handleSubmit}
-          >
-            <header className="role-modal-header">
-              <div>
-                <h2 id="catalog-modal-title">
-                  {editingItem ? 'Editar' : 'Adicionar'}{' '}
-                  {isDepartmentsTab ? 'departamento' : 'sistema'}
-                </h2>
-                <p>Preencha as informações do cadastro.</p>
-              </div>
+      <AdminModal
+        open={isFormOpen}
+        as="form"
+        title={`${editingItem ? 'Editar' : 'Adicionar'} ${isDepartmentsTab ? 'departamento' : 'sistema'}`}
+        titleId="catalog-modal-title"
+        description="Preencha as informações do cadastro."
+        onClose={handleCloseForm}
+        onSubmit={handleSubmit}
+        actions={
+          <>
+            <button type="button" className={buttonStyles.secondary} onClick={handleCloseForm}>
+              Cancelar
+            </button>
+            <button type="submit" className={buttonStyles.primary} disabled={loading}>
+              Salvar
+            </button>
+          </>
+        }
+      >
+        <div className={`${modalStyles.body} ${adminStyles.formGrid}`}>
+          <label className={formStyles.label}>
+            <span>Nome</span>
+            <input
+              className={formStyles.input}
+              type="text"
+              value={formValues.name}
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, name: event.target.value }))
+              }
+              placeholder={isDepartmentsTab ? 'Ex: Jurídico' : 'Ex: Portal Jurídico'}
+              required
+            />
+          </label>
 
-              <button
-                type="button"
-                className="role-modal-close"
-                onClick={handleCloseForm}
-                aria-label="Fechar"
-              >
-                x
-              </button>
-            </header>
+          <label className={formStyles.label}>
+            <span>Sigla</span>
+            <input
+              className={formStyles.input}
+              type="text"
+              value={formValues.acronym}
+              onChange={(event) =>
+                setFormValues((current) => ({
+                  ...current,
+                  acronym: event.target.value.toUpperCase(),
+                }))
+              }
+              placeholder={isDepartmentsTab ? 'Ex: JUR' : 'Ex: PORT'}
+              minLength={2}
+              maxLength={5}
+              required
+            />
+          </label>
 
-            <div className="invite-form-grid">
-              <label className="invite-field">
-                <span>Nome</span>
-                <input
-                  type="text"
-                  value={formValues.name}
-                  onChange={(event) =>
-                    setFormValues((current) => ({ ...current, name: event.target.value }))
-                  }
-                  placeholder={isDepartmentsTab ? 'Ex: Jurídico' : 'Ex: Portal Jurídico'}
-                  required
-                />
-              </label>
-
-              <label className="invite-field">
-                <span>Descrição</span>
-                <textarea
-                  value={formValues.description}
-                  onChange={(event) =>
-                    setFormValues((current) => ({
-                      ...current,
-                      description: event.target.value,
-                    }))
-                  }
-                  placeholder="Descreva a finalidade deste cadastro"
-                  required
-                />
-              </label>
-
-              {isDepartmentsTab ? (
-                <label className="invite-field">
-                  <span>Responsável</span>
-                  <input
-                    type="text"
-                    value={formValues.manager}
-                    onChange={(event) =>
-                      setFormValues((current) => ({
-                        ...current,
-                        manager: event.target.value,
-                      }))
-                    }
-                    placeholder="Ex: Camila Andrade"
-                    required
-                  />
-                </label>
-              ) : (
-                <>
-                  <label className="invite-field">
-                    <span>Departamento</span>
-                    <select
-                      value={formValues.departmentId}
-                      onChange={(event) =>
-                        setFormValues((current) => ({
-                          ...current,
-                          departmentId: event.target.value,
-                        }))
-                      }
-                      required
-                    >
-                      {departments.map((department) => (
-                        <option key={department.id} value={department.id}>
-                          {department.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="invite-field">
-                    <span>URL</span>
-                    <input
-                      type="url"
-                      value={formValues.url}
-                      onChange={(event) =>
-                        setFormValues((current) => ({ ...current, url: event.target.value }))
-                      }
-                      placeholder="https://sistema.empresa.com"
-                      required
-                    />
-                  </label>
-                </>
-              )}
-
-              <label className="invite-field">
-                <span>Status</span>
-                <select
-                  value={formValues.status}
-                  onChange={(event) =>
-                    setFormValues((current) => ({
-                      ...current,
-                      status: event.target.value as CatalogStatus,
-                    }))
-                  }
-                >
-                  <option value="Ativo">Ativo</option>
-                  <option value="Inativo">Inativo</option>
-                </select>
-              </label>
-            </div>
-
-            <footer className="role-modal-actions">
-              <button type="button" className="secondary-btn" onClick={handleCloseForm}>
-                Cancelar
-              </button>
-              <button type="submit" className="primary-btn">
-                Salvar
-              </button>
-            </footer>
-          </form>
+          <label className={formStyles.label}>
+            <span>Status</span>
+            <select
+              className={formStyles.select}
+              value={formValues.status}
+              onChange={(event) =>
+                setFormValues((current) => ({
+                  ...current,
+                  status: event.target.value as CatalogStatus,
+                }))
+              }
+            >
+              <option value="Ativo">Ativo</option>
+              <option value="Inativo">Inativo</option>
+            </select>
+          </label>
         </div>
-      )}
+      </AdminModal>
 
-      {deleteTarget && (
-        <div className="role-modal-backdrop" role="presentation">
-          <section
-            className="role-modal delete-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-modal-title"
-          >
-            <header className="role-modal-header">
-              <div>
-                <h2 id="delete-modal-title">Excluir cadastro</h2>
-                <p>Esta ação remove o item da lista atual.</p>
-              </div>
-              <button
-                type="button"
-                className="role-modal-close"
-                onClick={() => setDeleteTarget(null)}
-                aria-label="Fechar"
-              >
-                x
-              </button>
-            </header>
-
-            <div className="delete-modal-body">
-              Tem certeza que deseja excluir <strong>{deleteTarget.name}</strong>?
-              {isDepartmentsTab && (
-                <span>
-                  Sistemas vinculados a este departamento também serão removidos.
-                </span>
-              )}
-            </div>
-
-            <footer className="role-modal-actions">
-              <button
-                type="button"
-                className="secondary-btn"
-                onClick={() => setDeleteTarget(null)}
-              >
-                Cancelar
-              </button>
-              <button type="button" className="primary-btn danger-btn" onClick={handleConfirmDelete}>
-                Excluir
-              </button>
-            </footer>
-          </section>
-        </div>
-      )}
+      <AdminModal
+        open={Boolean(deleteTarget)}
+        title="Excluir cadastro"
+        titleId="delete-modal-title"
+        description="Esta ação remove o item da lista atual."
+        onClose={() => setDeleteTarget(null)}
+        panelClassName={modalStyles.panel}
+        actions={
+          <>
+            <button
+              type="button"
+              className={buttonStyles.secondary}
+              onClick={() => setDeleteTarget(null)}
+            >
+              Cancelar
+            </button>
+            <button type="button" className={buttonStyles.danger} onClick={handleConfirmDelete}>
+              Excluir
+            </button>
+          </>
+        }
+      >
+        {deleteTarget && (
+          <div className={cn(modalStyles.body, adminStyles.deleteBody)}>
+            Tem certeza que deseja excluir <strong>{deleteTarget.name}</strong>?
+            <span>O backend fará uma desativação lógica do cadastro.</span>
+          </div>
+        )}
+      </AdminModal>
     </main>
   );
 }

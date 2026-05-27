@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Building2, MonitorCog } from 'lucide-react';
 import { useScrolling } from '../../hooks/useScrolling';
+import { chatStyles } from '../../utils/tailwindStyles';
 
 export interface FilterItem {
   itemNm: string;
@@ -12,8 +13,8 @@ interface FilterChatProps {
   icon?: 'building' | 'monitor';
   searchValue: string;
   onSearchChange: (value: string) => void;
-  selectedItems: string[];
-  onItemsChange: (items: string[]) => void;
+  selectedItems: number[];
+  onItemsChange: (items: number[]) => void;
   fetchItems: (lastItemId?: number) => Promise<{ data: { itemNm: string; itemId: number }[], finish: boolean }>;
   allOptionLabel?: string;
 }
@@ -39,14 +40,7 @@ export default function FilterChat({
       setItems(fetched.data);
       setFinish(fetched.finish)
     })();
-  }, []);
-
-  // Resetar quando a busca mudar
-  useEffect(() => {
-    if (searchValue) {
-      setFinish(false)
-    }
-  }, [searchValue]);
+  }, [fetchItems]);
 
   // Paginação com scroll
   useScrolling(
@@ -55,24 +49,25 @@ export default function FilterChat({
       if (!finish) {
         const lastItemId = items[items.length - 1].itemId;
         const newItems = await fetchItems(lastItemId);
-        setItems((prev) => [...prev, ...newItems.data]);
+        setItems((prev) => mergeUniqueItems(prev, newItems.data));
         setFinish(newItems.finish)
       }
     },
     { threshold: 100 }
   );
 
-  const summary = getSelectionSummary(selectedItems, allOptionLabel);
-  const count = getActiveSelectionCount(selectedItems, allOptionLabel);
+  const visibleItems = getVisibleItems(items, searchValue);
+  const summary = getSelectionSummary(selectedItems, items, allOptionLabel);
+  const count = selectedItems.length;
 
-  function handleItemChange(itemName: string) {
-    onItemsChange(getNextSelection(selectedItems, itemName, allOptionLabel));
+  function handleItemChange(itemId: number) {
+    onItemsChange(getNextSelection(selectedItems, itemId));
   }
 
   return (
-    <details className="chat-filter-menu">
+    <details className={chatStyles.filterMenu}>
       <summary
-        className="chat-department-filter"
+        className={chatStyles.filterSummary}
         title={`${title}: ${summary}`}
         aria-label={`Filtrar por ${title.toLowerCase()}. Seleção atual: ${summary}`}
       >
@@ -81,9 +76,9 @@ export default function FilterChat({
         {count > 0 && <strong>{count}</strong>}
       </summary>
 
-      <div className="chat-filter-options" ref={scrollContainerRef}>
+      <div className={chatStyles.filterOptions} ref={scrollContainerRef}>
         <input
-          className="chat-filter-search"
+          className="mb-1 rounded-xl border border-white/10 bg-[#0b1220] px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-blue-300/40"
           type="search"
           value={searchValue}
           onChange={(event) => onSearchChange(event.target.value)}
@@ -91,19 +86,28 @@ export default function FilterChat({
           aria-label={`Buscar ${title.toLowerCase()}`}
         />
 
-        {items.map((item) => (
-          <label className="chat-filter-option" key={item.itemId}>
+        <label className={chatStyles.filterOption}>
+          <input
+            type="checkbox"
+            checked={selectedItems.length === 0}
+            onChange={() => onItemsChange([])}
+          />
+          <span>{allOptionLabel}</span>
+        </label>
+
+        {visibleItems.map((item) => (
+          <label className={chatStyles.filterOption} key={item.itemId}>
             <input
               type="checkbox"
-              checked={selectedItems.includes(item.itemNm)}
-              onChange={() => handleItemChange(item.itemNm)}
+              checked={selectedItems.includes(item.itemId)}
+              onChange={() => handleItemChange(item.itemId)}
             />
             <span>{item.itemNm}</span>
           </label>
         ))}
 
-        {items.length === 0 && (
-          <span className="chat-filter-empty">
+        {visibleItems.length === 0 && (
+          <span className="px-3 py-2 text-sm text-slate-500">
             Nenhum {title.toLowerCase()} encontrado
           </span>
         )}
@@ -112,37 +116,50 @@ export default function FilterChat({
   );
 }
 
-function getNextSelection(
-  currentSelection: string[],
-  selectedOption: string,
-  allOption: string
-) {
-  if (selectedOption === allOption) {
-    return [allOption];
-  }
+function getNextSelection(currentSelection: number[], selectedOption: number) {
+  const nextSelection = currentSelection.includes(selectedOption)
+    ? currentSelection.filter((option) => option !== selectedOption)
+    : [...currentSelection, selectedOption];
 
-  const withoutAllOption = currentSelection.filter((option) => option !== allOption);
-  const nextSelection = withoutAllOption.includes(selectedOption)
-    ? withoutAllOption.filter((option) => option !== selectedOption)
-    : [...withoutAllOption, selectedOption];
-
-  return nextSelection.length > 0 ? nextSelection : [allOption];
+  return nextSelection;
 }
 
-function getSelectionSummary(selection: string[], allOption: string) {
-  const selectedItems = selection.filter((option) => option !== allOption);
-
-  if (selectedItems.length === 0) {
+function getSelectionSummary(selection: number[], items: FilterItem[], allOption: string) {
+  if (selection.length === 0) {
     return allOption;
   }
 
-  if (selectedItems.length <= 2) {
-    return selectedItems.join(', ');
+  const selectedLabels = selection
+    .map((selectedId) => items.find((item) => item.itemId === selectedId)?.itemNm)
+    .filter((label): label is string => Boolean(label));
+
+  if (selectedLabels.length === 0) {
+    return `${selection.length} selecionado${selection.length > 1 ? 's' : ''}`;
   }
 
-  return `${selectedItems.length} selecionados`;
+  if (selectedLabels.length <= 2) {
+    return selectedLabels.join(', ');
+  }
+
+  return `${selectedLabels.length} selecionados`;
 }
 
-function getActiveSelectionCount(selection: string[], allOption: string) {
-  return selection.filter((option) => option !== allOption).length;
+function getVisibleItems(items: FilterItem[], searchValue: string) {
+  const normalizedSearch = searchValue.trim().toLowerCase();
+
+  if (!normalizedSearch) {
+    return items;
+  }
+
+  return items.filter((item) => item.itemNm.toLowerCase().includes(normalizedSearch));
+}
+
+function mergeUniqueItems(currentItems: FilterItem[], nextItems: FilterItem[]) {
+  const itemsById = new Map<number, FilterItem>();
+
+  for (const item of [...currentItems, ...nextItems]) {
+    itemsById.set(item.itemId, item);
+  }
+
+  return Array.from(itemsById.values());
 }

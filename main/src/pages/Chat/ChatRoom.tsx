@@ -1,20 +1,31 @@
 import { useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useLocation, useParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import '../../styles/Chat.css';
 import { ChatHeader } from './components/ChatHeader';
 import { ChatInput } from './components/ChatInput';
 import { ChatMessages } from './components/ChatMessages';
 import { useChat } from './hooks/useChat';
+import { useChatFilterOptions } from './hooks/useChatFilterOptions';
 import { aiProviders, chatDepartments, chatSystems } from './mocks/chat.mock';
+import type { ChatNavigationState } from './types/chat.types';
+import { chatStyles } from '../../utils/tailwindStyles';
 
 export default function ChatRoom() {
   const { chatId } = useParams<{ chatId: string }>();
+  const location = useLocation();
   const { user } = useAuth();
+  const navigationState = getChatNavigationState(location.state);
+  const { fetchDepartments, fetchSystems } = useChatFilterOptions();
 
-  const [selectedDepartments, setSelectedDepartments] = useState([chatDepartments[0]]);
-  const [selectedSystems, setSelectedSystems] = useState([chatSystems[0]]);
-  const [selectedAiProvider, setSelectedAiProvider] = useState<number>(1);
+  const [selectedDepartments, setSelectedDepartments] = useState<number[]>(
+    navigationState.selectedDepartments ?? []
+  );
+  const [selectedSystems, setSelectedSystems] = useState<number[]>(
+    navigationState.selectedSystems ?? []
+  );
+  const [selectedAiProvider, setSelectedAiProvider] = useState<number>(
+    navigationState.selectedAiProvider ?? 1
+  );
 
   const {
     messages,
@@ -33,21 +44,22 @@ export default function ChatRoom() {
     return <Navigate to="/chat" replace />;
   }
 
-  const isAdmin = user.userTypeId === '2';
+  const isAdmin = user.userTypeId === '1';
   const latestAssistantMessage = [...messages]
     .reverse()
     .find((message) => message.sender === 'assistant');
   const sourcesCount = latestAssistantMessage?.sources?.length ?? 0;
 
   return (
-    <main className={`chat-page ${isAdmin ? 'admin' : 'user'}`}>
-      <section className="chat-main">
+    <main className={chatStyles.page} data-role={isAdmin ? 'admin' : 'user'}>
+      <section className={chatStyles.main}>
         <ChatHeader
           isConnected={isConnected}
+          chatId={chatId}
         />
 
-        <div className="chat-content">
-          <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minHeight: 0 }}>
+        <div className={chatStyles.content}>
+          <div className="flex h-full min-h-0 w-full flex-col">
             <ChatMessages
               messages={messages}
               currentUserId={user.userId ?? null}
@@ -56,13 +68,13 @@ export default function ChatRoom() {
               isLoadingMore={isLoadingMore}
             />
             {typingUsers.length > 0 && (
-              <div className="chat-typing-indicator-container">
-                <div className="typing-dots">
-                  <span />
-                  <span />
-                  <span />
+              <div className="mx-auto mb-3 flex w-fit items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-400">
+                <div className="flex gap-1">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-300" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-300 [animation-delay:120ms]" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-300 [animation-delay:240ms]" />
                 </div>
-                <span className="typing-text">Alguém está digitando...</span>
+                <span>Alguém está digitando...</span>
               </div>
             )}
           </div>
@@ -77,9 +89,11 @@ export default function ChatRoom() {
           selectedDepartments={selectedDepartments}
           departments={chatDepartments}
           onDepartmentsChange={setSelectedDepartments}
+          fetchDepartments={fetchDepartments}
           selectedSystems={selectedSystems}
           systems={chatSystems}
           onSystemsChange={setSelectedSystems}
+          fetchSystems={fetchSystems}
           selectedAiProvider={selectedAiProvider}
           aiProviders={aiProviders}
           onAiProviderChange={setSelectedAiProvider}
@@ -87,4 +101,28 @@ export default function ChatRoom() {
       </section>
     </main>
   );
+}
+
+function getChatNavigationState(state: unknown): ChatNavigationState {
+  if (!state || typeof state !== 'object') {
+    return {};
+  }
+
+  const candidate = state as ChatNavigationState;
+
+  return {
+    selectedDepartments: Array.isArray(candidate.selectedDepartments)
+      ? candidate.selectedDepartments.filter(isNumber)
+      : undefined,
+    selectedSystems: Array.isArray(candidate.selectedSystems)
+      ? candidate.selectedSystems.filter(isNumber)
+      : undefined,
+    selectedAiProvider: typeof candidate.selectedAiProvider === 'number'
+      ? candidate.selectedAiProvider
+      : undefined,
+  };
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === 'number';
 }

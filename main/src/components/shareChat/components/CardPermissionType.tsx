@@ -1,3 +1,5 @@
+import { modalStyles } from "../../../utils/tailwindStyles";
+
 interface CardPermissionTypeProps {
   currentPermission:number;
   selectPermission:number;
@@ -8,7 +10,7 @@ interface CardPermissionTypeProps {
 
 const CardPermissionType = ({currentPermission,selectPermission,children, setPermission}: CardPermissionTypeProps) => {
     return (
-        <label className="chat-share-option">
+        <label className={modalStyles.option}>
             <input
             type="radio"
             name="share-permission"
@@ -16,7 +18,7 @@ const CardPermissionType = ({currentPermission,selectPermission,children, setPer
             checked={currentPermission === selectPermission}
             onChange={() => setPermission(currentPermission)}
             />
-            {children}
+            <span className={modalStyles.optionText}>{children}</span>
         </label>
     )
 }

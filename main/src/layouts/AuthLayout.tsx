@@ -2,7 +2,7 @@ import { Outlet } from 'react-router-dom';
 
 export default function AuthLayout() {
   return (
-    <div style={{ minHeight: '100vh', background: '#000', color: '#fff' }}>
+    <div className="min-h-screen bg-black text-white">
       <Outlet />
     </div>
   );

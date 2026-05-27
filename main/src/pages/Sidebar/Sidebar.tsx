@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   FileText,
@@ -14,10 +14,11 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import '../../styles/sidebar.css';
 import { useFetch } from '../../hooks/useFetch';
 import ChatMenu from './components/chat/Chat';
-import type { Chat } from '../../types/chat';
+import type { ChatListResponse } from '../../types/chat';
+import { buttonStyles, modalStyles, sidebarStyles } from '../../utils/tailwindStyles';
+import { cn } from '../../utils/classNames';
 
 
 // ---------------------------------------------------------------------------
@@ -31,8 +32,8 @@ interface AddPolicyModalProps {
 
 function AddPolicyModal({ onClose }: AddPolicyModalProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
-  const [selectedSystems, setSelectedSystems] = useState<string[]>([]);
+  const [selectedDepartments] = useState<string[]>([]);
+  const [selectedSystems] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -59,18 +60,6 @@ function AddPolicyModal({ onClose }: AddPolicyModalProps) {
     setFile(e.dataTransfer.files?.[0] ?? null);
   }
 
-  function toggleDepartment(id: string) {
-    setSelectedDepartments((prev) =>
-      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
-    );
-  }
-
-  function toggleSystem(id: string) {
-    setSelectedSystems((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    );
-  }
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     // onSubmit({ file, departmentIds: selectedDepartments, systemIds: selectedSystems });
@@ -82,32 +71,36 @@ function AddPolicyModal({ onClose }: AddPolicyModalProps) {
   return (
     <div
       ref={overlayRef}
-      className="apm-overlay"
+      className={modalStyles.backdrop}
       onClick={handleOverlayClick}
       role="dialog"
       aria-modal="true"
       aria-labelledby="apm-title"
     >
-      <div className="apm-modal">
+      <div className={modalStyles.formPanel}>
         {/* Header */}
-        <div className="apm-header">
-          <div className="apm-header-left">
-            <div className="apm-header-icon">
+        <div className={modalStyles.header}>
+          <div className="flex items-center gap-3">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-500/10 text-blue-200">
               <FileText size={16} strokeWidth={1.8} />
             </div>
-            <h2 id="apm-title">Adicionar Política / Norma</h2>
+            <h2 id="apm-title" className={modalStyles.title}>Adicionar Política / Norma</h2>
           </div>
-          <button type="button" className="apm-close" onClick={onClose} aria-label="Fechar modal">
+          <button type="button" className={modalStyles.close} onClick={onClose} aria-label="Fechar modal">
             <X size={16} strokeWidth={1.8} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="apm-form">
+        <form onSubmit={handleSubmit} className={modalStyles.body}>
           {/* File upload */}
-          <div className="apm-section">
-            <p className="apm-label">Arquivo</p>
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-black uppercase tracking-[0.1em] text-slate-500">Arquivo</p>
             <div
-              className={`apm-dropzone${dragOver ? ' drag-over' : ''}${file ? ' has-file' : ''}`}
+              className={cn(
+                'flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-6 text-center outline-none transition hover:border-blue-300/45 hover:bg-blue-500/10 focus-visible:border-blue-300/45 focus-visible:ring-4 focus-visible:ring-blue-500/10',
+                dragOver && 'border-blue-400 bg-blue-500/15 ring-4 ring-blue-500/10',
+                file && 'border-solid border-blue-300/35 bg-blue-500/10',
+              )}
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
@@ -122,349 +115,52 @@ function AddPolicyModal({ onClose }: AddPolicyModalProps) {
                 type="file"
                 accept=".pdf,.doc,.docx,.txt"
                 onChange={handleFileChange}
-                style={{ display: 'none' }}
+                className="hidden"
               />
-              <div className={`apm-upload-icon-wrap${file ? ' active' : ''}`}>
+              <div className={cn(
+                'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-500 transition',
+                file && 'border-blue-300/25 bg-blue-500/15 text-blue-200',
+              )}>
                 <Upload size={18} strokeWidth={1.6} />
               </div>
               {file ? (
-                <span className="apm-filename">{file.name}</span>
+                <span className="break-all text-sm font-bold text-blue-200">{file.name}</span>
               ) : (
                 <>
-                  <span className="apm-drop-text">Arraste um arquivo ou clique para selecionar</span>
-                  <span className="apm-drop-hint">PDF · DOC · DOCX · TXT</span>
+                  <span className="text-sm text-slate-300">Arraste um arquivo ou clique para selecionar</span>
+                  <span className="text-xs uppercase tracking-[0.08em] text-slate-500">PDF · DOC · DOCX · TXT</span>
                 </>
               )}
             </div>
           </div>
 
           {/* Departments */}
-          <div className="apm-section">
-            <p className="apm-label">Departamentos responsáveis</p>
-            <div className="apm-chip-group" role="group" aria-label="Selecionar departamentos">
-              {/* {availableDepartments.map((dep) => (
-                <button
-                  key={dep.id}
-                  type="button"
-                  className={`apm-chip${selectedDepartments.includes(dep.id) ? ' selected' : ''}`}
-                  onClick={() => toggleDepartment(dep.id)}
-                  aria-pressed={selectedDepartments.includes(dep.id)}
-                >
-                  {dep.name}
-                </button>
-              ))} */}
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-black uppercase tracking-[0.1em] text-slate-500">Departamentos responsáveis</p>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Selecionar departamentos">
+              <span className="text-xs text-slate-500">Seleção pendente de integração com catálogos.</span>
             </div>
           </div>
 
           {/* Systems */}
-          <div className="apm-section">
-            <p className="apm-label">Sistemas integrados</p>
-            <div className="apm-chip-group" role="group" aria-label="Selecionar sistemas">
-              {/* {availableSystems.map((sys) => (
-                <button
-                  key={sys.id}
-                  type="button"
-                  className={`apm-chip${selectedSystems.includes(sys.id) ? ' selected' : ''}`}
-                  onClick={() => toggleSystem(sys.id)}
-                  aria-pressed={selectedSystems.includes(sys.id)}
-                >
-                  {sys.name}
-                </button>
-              ))} */}
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-black uppercase tracking-[0.1em] text-slate-500">Sistemas integrados</p>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Selecionar sistemas">
+              <span className="text-xs text-slate-500">Seleção pendente de integração com catálogos.</span>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="apm-actions">
-            <button type="button" className="apm-btn-cancel" onClick={onClose}>
+          <div className="flex justify-end gap-3 border-t border-white/10 pt-5">
+            <button type="button" className={buttonStyles.secondary} onClick={onClose}>
               Cancelar
             </button>
-            <button type="submit" className="apm-btn-submit" disabled={!isValid}>
+            <button type="submit" className={buttonStyles.primary} disabled={!isValid}>
               Adicionar política
             </button>
           </div>
         </form>
       </div>
-
-      <style>{`
-        /* ── Overlay ──────────────────────────────────────────────────────── */
-        .apm-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(4px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          padding: 16px;
-        }
-
-        /* ── Modal shell ──────────────────────────────────────────────────── */
-        .apm-modal {
-          width: 100%;
-          max-width: 496px;
-          max-height: 90vh;
-          overflow-y: auto;
-          display: flex;
-          flex-direction: column;
-          background: linear-gradient(180deg, #171d29 0%, #141a25 100%);
-          border: 1px solid #232a39;
-          border-radius: 18px;
-          box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.03),
-            0 24px 60px rgba(0, 0, 0, 0.45);
-        }
-
-        .apm-modal::-webkit-scrollbar { width: 6px; }
-        .apm-modal::-webkit-scrollbar-thumb {
-          background: rgba(255,255,255,0.07);
-          border-radius: 999px;
-        }
-
-        /* ── Header ───────────────────────────────────────────────────────── */
-        .apm-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 18px 20px 16px;
-          border-bottom: 1px solid #232a39;
-          flex-shrink: 0;
-        }
-
-        .apm-header-left {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .apm-header-icon {
-          width: 30px;
-          height: 30px;
-          border-radius: 9px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          color: #5e86ff;
-          background: rgba(47, 95, 255, 0.08);
-          border: 1px solid rgba(94, 134, 255, 0.12);
-          flex-shrink: 0;
-        }
-
-        .apm-header h2 {
-          margin: 0;
-          font-size: 15px;
-          font-weight: 700;
-          letter-spacing: -0.02em;
-          color: #f3f6fb;
-        }
-
-        .apm-close {
-          width: 28px;
-          height: 28px;
-          border-radius: 8px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          color: #737d8f;
-          background: transparent;
-          border: 1px solid transparent;
-          cursor: pointer;
-          transition: background 0.15s, color 0.15s, border-color 0.15s;
-          flex-shrink: 0;
-        }
-
-        .apm-close:hover {
-          background: rgba(255,255,255,0.06);
-          border-color: #232a39;
-          color: #a4adbc;
-        }
-
-        /* ── Form body ────────────────────────────────────────────────────── */
-        .apm-form {
-          padding: 18px 20px 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 18px;
-        }
-
-        .apm-section {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .apm-label {
-          margin: 0;
-          font-size: 11px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.07em;
-          color: #737d8f;
-        }
-
-        /* ── Dropzone ─────────────────────────────────────────────────────── */
-        .apm-dropzone {
-          border: 1.5px dashed #232a39;
-          border-radius: 14px;
-          padding: 22px 16px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 6px;
-          cursor: pointer;
-          transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
-          text-align: center;
-          outline: none;
-          background: rgba(255,255,255,0.01);
-        }
-
-        .apm-dropzone:hover,
-        .apm-dropzone:focus-visible {
-          border-color: rgba(47, 95, 255, 0.45);
-          background: rgba(47, 95, 255, 0.04);
-          box-shadow: 0 0 0 3px rgba(47, 95, 255, 0.08);
-        }
-
-        .apm-dropzone.drag-over {
-          border-color: #2f5fff;
-          background: rgba(47, 95, 255, 0.07);
-          box-shadow: 0 0 0 4px rgba(47, 95, 255, 0.12);
-        }
-
-        .apm-dropzone.has-file {
-          border-style: solid;
-          border-color: rgba(65, 117, 255, 0.35);
-          background: rgba(47, 95, 255, 0.05);
-        }
-
-        .apm-upload-icon-wrap {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          color: #737d8f;
-          background:
-            radial-gradient(circle at 30% 20%, rgba(94, 134, 255, 0.08), transparent 65%),
-            rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.06);
-          transition: color 0.18s, background 0.18s, border-color 0.18s;
-          margin-bottom: 2px;
-        }
-
-        .apm-upload-icon-wrap.active {
-          color: #5e86ff;
-          background: rgba(47, 95, 255, 0.1);
-          border-color: rgba(94, 134, 255, 0.2);
-        }
-
-        .apm-filename {
-          font-size: 13px;
-          font-weight: 600;
-          color: #7ea0ff;
-          word-break: break-all;
-          letter-spacing: -0.01em;
-        }
-
-        .apm-drop-text {
-          font-size: 13px;
-          color: #a4adbc;
-          line-height: 1.4;
-        }
-
-        .apm-drop-hint {
-          font-size: 11px;
-          color: #737d8f;
-          letter-spacing: 0.04em;
-        }
-
-        /* ── Chips ────────────────────────────────────────────────────────── */
-        .apm-chip-group {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 7px;
-        }
-
-        .apm-chip {
-          padding: 5px 13px;
-          border-radius: 999px;
-          border: 1px solid #232a39;
-          background: rgba(255,255,255,0.02);
-          font-size: 12px;
-          font-weight: 500;
-          color: #a4adbc;
-          cursor: pointer;
-          white-space: nowrap;
-          transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
-        }
-
-        .apm-chip:hover {
-          border-color: rgba(47, 95, 255, 0.4);
-          color: #7ea0ff;
-          background: rgba(47, 95, 255, 0.06);
-        }
-
-        .apm-chip.selected {
-          background: linear-gradient(180deg, #3268ff 0%, #2a5cff 100%);
-          border-color: rgba(71, 115, 255, 0.5);
-          color: #fff;
-          box-shadow: 0 4px 12px rgba(38, 92, 255, 0.22);
-        }
-
-        /* ── Actions ──────────────────────────────────────────────────────── */
-        .apm-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 10px;
-          padding-top: 2px;
-        }
-
-        .apm-btn-cancel {
-          height: 38px;
-          padding: 0 16px;
-          border-radius: 10px;
-          border: 1px solid #232a39;
-          background: rgba(255,255,255,0.03);
-          font-size: 13px;
-          font-weight: 600;
-          color: #a4adbc;
-          cursor: pointer;
-          transition: background 0.15s, color 0.15s, border-color 0.15s;
-        }
-
-        .apm-btn-cancel:hover {
-          background: rgba(255,255,255,0.06);
-          border-color: #30384b;
-          color: #f3f6fb;
-        }
-
-        .apm-btn-submit {
-          height: 38px;
-          padding: 0 18px;
-          border-radius: 10px;
-          border: 1px solid rgba(71, 115, 255, 0.35);
-          background: linear-gradient(180deg, #3268ff 0%, #2a5cff 100%);
-          color: #fff;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          box-shadow: 0 6px 16px rgba(38, 92, 255, 0.2);
-          transition: filter 0.15s, transform 0.15s, opacity 0.15s;
-        }
-
-        .apm-btn-submit:not(:disabled):hover {
-          filter: brightness(1.08);
-          transform: translateY(-1px);
-        }
-
-        .apm-btn-submit:disabled {
-          opacity: 0.38;
-          cursor: not-allowed;
-          box-shadow: none;
-        }
-      `}</style>
     </div>
   );
 }
@@ -476,11 +172,12 @@ function AddPolicyModal({ onClose }: AddPolicyModalProps) {
 export default function Sidebar() {
   const { user } = useAuth();
   const location = useLocation();
-  const isAdmin = user.role === '2';
+  const isAdmin = user.role === '1';
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const { get } = useFetch()  
-  async function handleGetMyChats (lastChatId?:string) {
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const { get } = useFetch<ChatListResponse>()  
+  const handleGetMyChats = useCallback(async (lastChatId?:string): Promise<ChatListResponse> => {
 
     let url = `/chat/scrolling`
 
@@ -488,12 +185,12 @@ export default function Sidebar() {
       url+=`?lastChatId=${lastChatId}`
     }
 
-    const response: {data:Chat[],finished:boolean} = await get(url) as {data:Chat[],finished:boolean}
+    const response = await get(url)
 
-    return response
-  }
+    return response ?? { data: [], finished: true }
+  }, [get])
 
-  async function handleGetSharedChats (lastChatId?:string) {
+  const handleGetSharedChats = useCallback(async (lastChatId?:string): Promise<ChatListResponse> => {
 
     let url = `/chat/shared-scrolling`
 
@@ -501,10 +198,10 @@ export default function Sidebar() {
       url+=`?lastChatId=${lastChatId}`
     }
 
-    const response: {data:Chat[],finished:boolean} = await get(url) as {data:Chat[],finished:boolean}
+    const response = await get(url)
 
-    return response
-  }
+    return response ?? { data: [], finished: true }
+  }, [get])
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 900px)');
@@ -520,24 +217,24 @@ export default function Sidebar() {
   }, []);
 
   useEffect(() => {
-    if (isMobile) setIsCollapsed(true);
+    if (isMobile) {
+      queueMicrotask(() => setIsCollapsed(true));
+    }
   }, [isMobile, location.pathname]);
 
-  const sidebarClassName = ['sidebar', isCollapsed ? 'collapsed' : '', isMobile ? 'mobile' : '']
-    .filter(Boolean)
-    .join(' ');
+  const sidebarClassName = cn(sidebarStyles.aside, isCollapsed && sidebarStyles.collapsed);
 
   return (
     <>
       <aside className={sidebarClassName} aria-label="Navegação principal">
-        <div className="sidebar-top-icons">
-          <NavLink to="/chat" className="sidebar-brand" aria-label="Ir para o chat">
+        <div className={sidebarStyles.topIcons}>
+          <NavLink to="/chat" className={sidebarStyles.brand} aria-label="Ir para o chat">
             <ShieldCheck size={20} strokeWidth={1.8} />
           </NavLink>
 
           <button
             type="button"
-            className="sidebar-chat-icon"
+            className={sidebarStyles.iconButton}
             onClick={() => setIsCollapsed((current) => !current)}
             aria-label={isCollapsed ? 'Abrir sidebar' : 'Fechar sidebar'}
             aria-expanded={!isCollapsed}
@@ -550,24 +247,24 @@ export default function Sidebar() {
           </button>
         </div>
 
-        <div className="sidebar-content" aria-hidden={isCollapsed}>
-          <div className="sidebar-divider" />
+        <div className={cn(sidebarStyles.content, isCollapsed && 'pointer-events-none opacity-0')} aria-hidden={isCollapsed}>
+          <div className={sidebarStyles.divider} />
 
-          <section className="sidebar-section sidebar-sources">
+          <section className={sidebarStyles.section}>
             <NavLink
               to={isAdmin ? '/admin/documents' : '/chat'}
-              className="sidebar-section-header sidebar-section-header-link"
+              className={sidebarStyles.sectionHeader}
               aria-label={isAdmin ? 'Ir para políticas e normas' : 'Fontes da empresa'}
             >
-              <h2>Fontes da Empresa</h2>
+              <h2 className={sidebarStyles.sectionTitle}>Fontes da Empresa</h2>
               <Grid2X2 size={17} strokeWidth={1.8} />
             </NavLink>
 
             {isAdmin && (
               <button
                 type="button"
-                className="sidebar-add-source"
-                // onClick={() => setIsPolicyModalOpen(true)}
+                className={sidebarStyles.addButton}
+                onClick={() => setIsPolicyModalOpen(true)}
               >
                 <span aria-hidden="true">+</span>
                 Adicionar políticas/normas
@@ -576,31 +273,31 @@ export default function Sidebar() {
           </section>
 
           {isAdmin && (
-            <section className="sidebar-admin-panel" aria-label="Administração">
-              <p className="sidebar-kicker">Administração</p>
+            <section className={sidebarStyles.section} aria-label="Administração">
+              <p className={sidebarStyles.kicker}>Administração</p>
 
-              <nav className="sidebar-admin-nav">
-                <NavLink to="/admin/documents" className="sidebar-admin-link">
+              <nav className={sidebarStyles.nav}>
+                <NavLink to="/admin/documents" className={sidebarStyles.navLink}>
                   <FileText size={17} strokeWidth={1.8} />
                   Gestão de Documentos
                 </NavLink>
 
-                <NavLink to="/admin/users" className="sidebar-admin-link">
+                <NavLink to="/admin/users" className={sidebarStyles.navLink}>
                   <UserCog size={17} strokeWidth={1.8} />
                   Gerenciamento de Usuários
                 </NavLink>
 
-                <NavLink to="/admin/departments" className="sidebar-admin-link">
+                <NavLink to="/admin/departments" className={sidebarStyles.navLink}>
                   <Layers3 size={17} strokeWidth={1.8} />
                   Departamentos
                 </NavLink>
 
-                <NavLink to="/admin/systems" className="sidebar-admin-link">
+                <NavLink to="/admin/systems" className={sidebarStyles.navLink}>
                   <Layers3 size={17} strokeWidth={1.8} />
                   Sistemas
                 </NavLink>
 
-                <NavLink to="/admin/tokens" className="sidebar-admin-link">
+                <NavLink to="/admin/tokens" className={sidebarStyles.navLink}>
                   <KeyRound size={17} strokeWidth={1.8} />
                   Gerenciamento de Tokens
                 </NavLink>
@@ -608,24 +305,32 @@ export default function Sidebar() {
             </section>
           )}
 
-          <ChatMenu handleGetChat={handleGetMyChats} />
+          <ChatMenu
+            title="Minhas conversas"
+            emptyMessage="Nenhuma conversa criada por você."
+            handleGetChat={handleGetMyChats}
+          />
 
-          <ChatMenu handleGetChat={handleGetSharedChats} />
+          <ChatMenu
+            title="Compartilhadas comigo"
+            emptyMessage="Nenhuma conversa compartilhada com você."
+            handleGetChat={handleGetSharedChats}
+          />
 
-          <div className="sidebar-saved-empty">
-            <div className="sidebar-saved-icon">
+          <div className={sidebarStyles.savedEmpty}>
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04] text-slate-500">
               <FileText size={23} strokeWidth={1.8} />
             </div>
             <p>As políticas salvas vão aparecer aqui.</p>
           </div>
 
-          <section className="sidebar-profile-card" aria-label="Perfil do usuário">
-            <div className="sidebar-profile-info">
-              <strong>{user.name}</strong>
-              <span>{user.email}</span>
+          <section className={sidebarStyles.profileCard} aria-label="Perfil do usuário">
+            <div className={sidebarStyles.profileInfo}>
+              <strong className={sidebarStyles.profileName}>{user.name}</strong>
+              <span className={sidebarStyles.profileEmail}>{user.email}</span>
             </div>
 
-            <NavLink to="/profile/edit" className="sidebar-profile-link">
+            <NavLink to="/profile/edit" className={sidebarStyles.profileLink}>
               <Pencil size={15} strokeWidth={1.8} />
               Editar perfil
             </NavLink>
@@ -636,19 +341,18 @@ export default function Sidebar() {
       {isMobile && !isCollapsed && (
         <button
           type="button"
-          className="sidebar-backdrop"
+          className={sidebarStyles.backdrop}
           aria-label="Fechar sidebar"
           onClick={() => setIsCollapsed(true)}
         />
       )}
 
       {/* ── Modal ── */}
-      {/* {isPolicyModalOpen && (
+      {isPolicyModalOpen && (
         <AddPolicyModal
           onClose={() => setIsPolicyModalOpen(false)}
-          onSubmit={handlePolicySubmit}
         />
-      )} */}
+      )}
     </>
   );
 }

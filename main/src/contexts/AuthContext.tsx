@@ -9,6 +9,7 @@ interface User {
   email: string;
   role: UserRole;
   userTypeId?: UserRole;
+  typeUserId?: number;
 }
 
 interface AuthContextData {
@@ -34,10 +35,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   function login(userData: User) {
+    const typeUserId = userData.userTypeId || String(userData.typeUserId ?? '') as UserRole;
     const normalizedUser: User = {
       ...userData,
-      role: userData.role || userData.userTypeId || '1',
-      userTypeId: userData.userTypeId || userData.role || '1',
+      role: userData.role || typeUserId || '1',
+      userTypeId: typeUserId || userData.role || '1',
     };
     setUser(normalizedUser);
     setIsAuthenticated(true);
@@ -48,8 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const mockUser: User = {
       name: 'Admin',
       email: 'admin@email.com',
-      role: '2',
-      userTypeId: '2',
+      role: '1',
+      userTypeId: '1',
     };
     setUser(mockUser);
     setIsAuthenticated(true);
@@ -60,8 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const mockUser: User = {
       name: 'User',
       email: 'user@email.com',
-      role: '1',
-      userTypeId: '1',
+      role: '2',
+      userTypeId: '2',
     };
     setUser(mockUser);
     setIsAuthenticated(true);
@@ -100,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
 

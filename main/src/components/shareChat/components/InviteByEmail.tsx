@@ -2,6 +2,8 @@ import { UserPlus, X } from "lucide-react";
 import type { UseFormRegister, UseFormSetValue } from "react-hook-form";
 import { useState, useEffect } from "react";
 import { useFetch } from "../../../hooks/useFetch";
+import type { ShareChatFormData } from "../../../hooks/forms/useShareChatForm";
+import { buttonStyles, formStyles } from "../../../utils/tailwindStyles";
 
 interface UserSuggestion {
   email: string;
@@ -10,12 +12,13 @@ interface UserSuggestion {
 }
 
 interface InviteByEmailProps {
-  register: UseFormRegister<any>;
+  register: UseFormRegister<ShareChatFormData>;
   error?: string;
-  setValue: UseFormSetValue<any>;
+  setValue: UseFormSetValue<ShareChatFormData>;
+  resetSignal?: number;
 }
 
-const InviteByEmail = ({ register, error, setValue }: InviteByEmailProps) => {
+const InviteByEmail = ({ register, error, setValue, resetSignal = 0 }: InviteByEmailProps) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserSuggestion | null>(null);
@@ -43,10 +46,19 @@ const InviteByEmail = ({ register, error, setValue }: InviteByEmailProps) => {
     return () => clearTimeout(debounceTimer);
   }, [inputValue, get]);
 
+  useEffect(() => {
+    queueMicrotask(() => {
+      setSelectedUser(null);
+      setInputValue("");
+      setSuggestions([]);
+      setShowSuggestions(false);
+    });
+  }, [resetSignal]);
+
   function handleSelectUser(user: UserSuggestion) {
     setSelectedUser(user);
     setValue("email", user.email);
-    setValue("userId", user.userId.toString());
+    setValue("userId", user.userId);
     setInputValue(user.email);
     setShowSuggestions(false);
   }
@@ -54,7 +66,7 @@ const InviteByEmail = ({ register, error, setValue }: InviteByEmailProps) => {
   function handleClearSelection() {
     setSelectedUser(null);
     setValue("email", "");
-    setValue("userId", "");
+    setValue("userId", 0);
     setInputValue("");
   }
 
@@ -67,13 +79,13 @@ const InviteByEmail = ({ register, error, setValue }: InviteByEmailProps) => {
   }
 
   return (
-    <div className="chat-share-invite-area">
-      <span className="chat-share-invite-label">Adicionar por e-mail</span>
-      <div className="chat-share-invite-row">
-        <div className="chat-share-input-wrapper" style={{ position: "relative", flex: 1 }}>
+    <div className="px-6 pb-5">
+      <span className="mb-2 block text-xs font-black uppercase tracking-[0.1em] text-slate-500">Adicionar por e-mail</span>
+      <div className="flex gap-3 max-[640px]:flex-col">
+        <div className="relative flex-1">
           <input
             type="email"
-            className="chat-share-invite-input"
+            className={formStyles.input}
             placeholder="nome@empresa.com"
             aria-label="E-mail para convite"
             value={inputValue}
@@ -86,67 +98,34 @@ const InviteByEmail = ({ register, error, setValue }: InviteByEmailProps) => {
             <button
               type="button"
               onClick={handleClearSelection}
-              style={{
-                position: "absolute",
-                right: "8px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "4px"
-              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-500 transition hover:bg-white/[0.06] hover:text-slate-200"
             >
               <X size={14} />
             </button>
           )}
           {showSuggestions && suggestions.length > 0 && (
             <ul
-              style={{
-                position: "absolute",
-                top: "100%",
-                left: 0,
-                right: 0,
-                background: "white",
-                border: "1px solid #e5e7eb",
-                borderRadius: "4px",
-                marginTop: "4px",
-                maxHeight: "200px",
-                overflowY: "auto",
-                zIndex: 10,
-                listStyle: "none",
-                padding: "4px 0",
-                margin: 0,
-                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
-              }}
+              className="absolute left-0 right-0 top-[calc(100%+6px)] z-10 max-h-52 list-none overflow-y-auto rounded-2xl border border-white/10 bg-[#101827] p-1 shadow-[0_18px_44px_rgba(0,0,0,0.35)]"
             >
               {suggestions.map((user) => (
                 <li
                   key={user.userId}
                   onClick={() => handleSelectUser(user)}
-                  style={{
-                    padding: "8px 12px",
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "2px"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#f3f4f6"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "white"}
+                  className="flex cursor-pointer flex-col gap-0.5 rounded-xl px-3 py-2 transition hover:bg-white/[0.06]"
                 >
-                  <span style={{ fontWeight: 500, fontSize: "14px" }}>{user.name}</span>
-                  <span style={{ fontSize: "12px", color: "#6b7280" }}>{user.email}</span>
+                  <span className="text-sm font-bold text-slate-100">{user.name}</span>
+                  <span className="text-xs text-slate-500">{user.email}</span>
                 </li>
               ))}
             </ul>
           )}
         </div>
-        <button type="submit" className="chat-share-invite-btn">
+        <button type="submit" className={buttonStyles.primary}>
           <UserPlus size={15} />
           Adicionar
         </button>
       </div>
-      {error && <p className="chat-share-invite-error">{error}</p>}
+      {error && <p className={formStyles.error}>{error}</p>}
     </div>
   );
 };
