@@ -3,16 +3,24 @@ import type { User } from '../interfaces/user.interface';
 import type {
   BackendUser,
   BackendDepartment,
+  BackendDocument,
   BackendSystem,
   BackendModelIaKey,
   CatalogItem,
   AiKeyItem,
+  SessionDocument,
 } from '../interfaces/admin.interface';
 
 export type { CatalogStatus } from '../interfaces/admin.interface';
 export type {
   BackendUser,
   BackendDepartment,
+  BackendPermissionGroup,
+  BackendPermissionGroupUser,
+  PermissionGroupPaginationResponse,
+  PermissionGroupUsersScrollingResponse,
+  BackendDocument,
+  BackendDocumentsResponse,
   BackendSystem,
   BackendModelIa,
   BackendModelIaKey,
@@ -61,6 +69,18 @@ export function mapBackendSystem(system: BackendSystem): CatalogItem {
     name: system.systemNm,
     acronym: system.acronym,
     status: system.active ? 'Ativo' : 'Inativo',
+  };
+}
+
+export function mapBackendDocument(document: BackendDocument): SessionDocument {
+  return {
+    id: document.documentId,
+    title: document.title ?? 'Sem título',
+    version: document.lastVersion?.version ?? 'Sem versão',
+    status: document.lastVersion?.status ?? 'Sem status',
+    lastVersionId: document.lastVersionId,
+    departmentIds: document.departmentIds ?? [],
+    systemIds: document.systemIds ?? [],
   };
 }
 

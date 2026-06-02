@@ -269,6 +269,11 @@ export default function Sidebar() {
                   Sistemas
                 </NavLink>
 
+                <NavLink to="/admin/permission-groups" className={sidebarStyles.navLink}>
+                  <ShieldCheck size={17} strokeWidth={1.8} />
+                  Grupos de Permissão
+                </NavLink>
+
                 <NavLink to="/admin/tokens" className={sidebarStyles.navLink}>
                   <KeyRound size={17} strokeWidth={1.8} />
                   Gerenciamento de Tokens

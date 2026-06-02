@@ -1,13 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import { UsersStats } from './components/UsersStats';
 import { UsersTable } from './components/UsersTable';
 import type { User, UserRole, UserStatus } from '../../interfaces/user.interface';
 import { useFetch } from '../../hooks/useFetch';
 import {
+  type BackendDepartment,
+  type BackendPermissionGroup,
+  type BackendPermissionGroupUser,
   type BackendUser,
+  type PermissionGroupPaginationResponse,
+  type PermissionGroupUsersScrollingResponse,
   mapBackendUser,
   roleToTypeUserId,
 } from '../../services/adminApi';
+import { useCursorScroll } from '../../hooks/useCursorScroll';
 import { AdminPagination } from '../../components/admin/AdminPagination';
 import { AdminModal } from '../../components/admin/AdminModal';
 import { adminStyles, buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
@@ -15,19 +22,68 @@ import { useInviteUserForm } from '../../hooks/forms/useInviteUserForm';
 import type { InviteUserFormData } from '../../hooks/forms/useInviteUserForm';
 
 const USERS_PER_PAGE = 4;
+const PERMISSION_GROUPS_PAGE_SIZE = 100;
+const EMPTY_DEPARTMENT_LABEL = 'Não informado';
+const SCROLLABLE_USER_MODAL_PANEL =
+  'w-full max-w-[560px] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[22px] border border-[var(--border-neutral)] border-t-[3px] border-t-[var(--accent)] bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-[0_28px_80px_rgba(31,29,25,0.24)]';
+
+type PermissionGroupAccess = Record<
+  number,
+  {
+    users: BackendPermissionGroupUser[];
+    departments: BackendDepartment[];
+  }
+>;
+
+function formatUserDepartments(userId: number, accessByGroup: PermissionGroupAccess) {
+  const departmentNames = new Set<string>();
+
+  Object.values(accessByGroup).forEach(({ users, departments }) => {
+    const userBelongsToGroup = users.some((user) => user.userId === userId);
+
+    if (!userBelongsToGroup) {
+      return;
+    }
+
+    departments.forEach((department) => {
+      if (department.active) {
+        departmentNames.add(department.departmentNm);
+      }
+    });
+  });
+
+  if (departmentNames.size === 0) {
+    return EMPTY_DEPARTMENT_LABEL;
+  }
+
+  return Array.from(departmentNames).sort((first, second) => first.localeCompare(second)).join(', ');
+}
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
+  const [departments, setDepartments] = useState<BackendDepartment[]>([]);
+  const [permissionGroups, setPermissionGroups] = useState<BackendPermissionGroup[]>([]);
+  const [permissionGroupAccess, setPermissionGroupAccess] = useState<PermissionGroupAccess>({});
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('Todos');
   const [departmentFilter, setDepartmentFilter] = useState('Todos');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [selectedRole, setSelectedRole] = useState<UserRole>('Default');
   const [selectedStatus, setSelectedStatus] = useState<UserStatus>('Ativo');
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | ''>('');
+  const [selectedPermissionGroupId, setSelectedPermissionGroupId] = useState<number | ''>('');
+  const [inviteDepartmentId, setInviteDepartmentId] = useState<number | ''>('');
+  const [invitePermissionGroupId, setInvitePermissionGroupId] = useState<number | ''>('');
+  const [isLinkingDepartment, setIsLinkingDepartment] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const { get, post, patch, del, loading } = useFetch();
+  const { fetchAll: fetchAllDepartments } = useCursorScroll<BackendDepartment>({
+    endpoint: '/department/scrolling',
+    cursorParam: 'departmentId',
+    getCursor: (department) => department.departmentId,
+  });
 
   const {
     register: registerInvite,
@@ -40,16 +96,101 @@ export default function AdminUsers() {
 
   const inviteRole = watchInvite('role');
 
+  const fetchAllPermissionGroups = useCallback(async () => {
+    const groups: BackendPermissionGroup[] = [];
+    let currentPermissionGroupsPage = 1;
+    let totalPermissionGroupsPages = 1;
+
+    do {
+      const response = await get(
+        `/permission-groups/pagination?limit=${PERMISSION_GROUPS_PAGE_SIZE}&currentPage=${currentPermissionGroupsPage}`,
+      ) as PermissionGroupPaginationResponse | null;
+
+      if (!response) {
+        break;
+      }
+
+      groups.push(...response.data);
+      totalPermissionGroupsPages = response.pages;
+      currentPermissionGroupsPage += 1;
+    } while (currentPermissionGroupsPage <= totalPermissionGroupsPages);
+
+    return groups;
+  }, [get]);
+
+  const fetchPermissionGroupUsers = useCallback(async (permissionGroupId: number) => {
+    const groupUsers: BackendPermissionGroupUser[] = [];
+    let cursor: number | undefined;
+
+    while (true) {
+      const query = cursor ? `?userId=${cursor}` : '';
+      const response = await get(
+        `/permission-groups/${permissionGroupId}/users/scrolling${query}`,
+      ) as PermissionGroupUsersScrollingResponse | null;
+
+      if (!response) {
+        break;
+      }
+
+      groupUsers.push(...response.data);
+
+      if (response.finish || response.data.length === 0) {
+        break;
+      }
+
+      cursor = response.data[response.data.length - 1].userId;
+    }
+
+    return groupUsers;
+  }, [get]);
+
+  const fetchPermissionGroupAccess = useCallback(async (groups: BackendPermissionGroup[]) => {
+    const accessEntries = await Promise.all(
+      groups.map(async (group) => {
+        const [groupUsers, groupDepartments] = await Promise.all([
+          fetchPermissionGroupUsers(group.permissionGroupId),
+          get(`/permission-groups/${group.permissionGroupId}/departments`) as Promise<BackendDepartment[] | null>,
+        ]);
+
+        return [
+          group.permissionGroupId,
+          {
+            users: groupUsers,
+            departments: groupDepartments ?? [],
+          },
+        ] as const;
+      }),
+    );
+
+    return Object.fromEntries(accessEntries) as PermissionGroupAccess;
+  }, [fetchPermissionGroupUsers, get]);
+
   const loadUsers = useCallback(async () => {
     setIsLoadingUsers(true);
-    const response = await get('/user') as BackendUser[] | null;
+    const [usersResponse, departmentRows, permissionGroupRows] = await Promise.all([
+      get('/user') as Promise<BackendUser[] | null>,
+      fetchAllDepartments(),
+      fetchAllPermissionGroups(),
+    ]);
 
-    if (response) {
-      setUsers(response.map(mapBackendUser));
+    const activeDepartments = departmentRows.filter((department) => department.active);
+    const accessByGroup = await fetchPermissionGroupAccess(permissionGroupRows);
+
+    setDepartments(activeDepartments);
+    setPermissionGroups(permissionGroupRows);
+    setPermissionGroupAccess(accessByGroup);
+
+    if (usersResponse) {
+      setUsers(
+        usersResponse.map((user) => ({
+          ...mapBackendUser(user),
+          department: formatUserDepartments(user.userId, accessByGroup),
+        })),
+      );
     }
 
     setIsLoadingUsers(false);
-  }, [get]);
+  }, [fetchAllDepartments, fetchAllPermissionGroups, fetchPermissionGroupAccess, get]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -81,7 +222,29 @@ export default function AdminUsers() {
   const pageStart = (currentPage - 1) * USERS_PER_PAGE;
   const pageEnd = pageStart + USERS_PER_PAGE;
   const paginatedUsers = filteredUsers.slice(pageStart, pageEnd);
-  const departments = ['Todos', ...new Set(users.map((user) => user.department))];
+  const departmentFilters = ['Todos', ...new Set(users.map((user) => user.department))];
+  const availablePermissionGroups = permissionGroups.filter((group) => {
+    const selectedDepartment = Number(selectedDepartmentId);
+
+    if (!selectedDepartment) {
+      return false;
+    }
+
+    return permissionGroupAccess[group.permissionGroupId]?.departments.some(
+      (department) => department.departmentId === selectedDepartment,
+    );
+  });
+  const availableInvitePermissionGroups = permissionGroups.filter((group) => {
+    const selectedDepartment = Number(inviteDepartmentId);
+
+    if (!selectedDepartment) {
+      return false;
+    }
+
+    return permissionGroupAccess[group.permissionGroupId]?.departments.some(
+      (department) => department.departmentId === selectedDepartment,
+    );
+  });
 
   useEffect(() => {
     queueMicrotask(() => setCurrentPage(1));
@@ -91,14 +254,81 @@ export default function AdminUsers() {
     queueMicrotask(() => setCurrentPage((page) => Math.min(page, totalPages)));
   }, [totalPages]);
 
+  const getPermissionGroupsByDepartment = useCallback((departmentId: number) => {
+    return permissionGroups.filter((group) =>
+      permissionGroupAccess[group.permissionGroupId]?.departments.some(
+        (department) => department.departmentId === departmentId,
+      ),
+    );
+  }, [permissionGroupAccess, permissionGroups]);
+
+  function handleDepartmentChange(departmentId: number | '') {
+    setSelectedDepartmentId(departmentId);
+
+    if (departmentId === '') {
+      setSelectedPermissionGroupId('');
+      return;
+    }
+
+    const [firstAvailableGroup] = getPermissionGroupsByDepartment(departmentId);
+    setSelectedPermissionGroupId(firstAvailableGroup?.permissionGroupId ?? '');
+  }
+
+  function handleInviteDepartmentChange(departmentId: number | '') {
+    setInviteDepartmentId(departmentId);
+
+    if (departmentId === '') {
+      setInvitePermissionGroupId('');
+      return;
+    }
+
+    const [firstAvailableGroup] = getPermissionGroupsByDepartment(departmentId);
+    setInvitePermissionGroupId(firstAvailableGroup?.permissionGroupId ?? '');
+  }
+
   function handleOpenRoleModal(user: User) {
     setEditingUser(user);
     setSelectedRole(user.role);
     setSelectedStatus(user.status);
+    setSelectedDepartmentId('');
+    setSelectedPermissionGroupId('');
   }
 
   function handleCloseRoleModal() {
     setEditingUser(null);
+    setSelectedDepartmentId('');
+    setSelectedPermissionGroupId('');
+  }
+
+  async function handleLinkUserDepartment() {
+    if (!editingUser || selectedPermissionGroupId === '' || selectedDepartmentId === '') {
+      return;
+    }
+
+    const access = permissionGroupAccess[selectedPermissionGroupId];
+    const userAlreadyInGroup = access?.users.some((user) => user.userId === editingUser.id);
+
+    if (userAlreadyInGroup) {
+      toast.success('Usuário já está vinculado ao grupo deste departamento.');
+      return;
+    }
+
+    setIsLinkingDepartment(true);
+
+    const response = await post('/permission-groups/users', {
+      body: {
+        permissionGroupId: selectedPermissionGroupId,
+        userId: editingUser.id,
+      },
+    });
+
+    if (response) {
+      toast.success('Usuário vinculado ao departamento pelo grupo de permissão.');
+      await loadUsers();
+      handleCloseRoleModal();
+    }
+
+    setIsLinkingDepartment(false);
   }
 
   async function handleSaveRole() {
@@ -139,9 +369,16 @@ export default function AdminUsers() {
 
     if (response) {
       setUsers((currentUsers) =>
-        currentUsers.map((user) =>
-          user.id === editingUser.id ? mapBackendUser(response) : user
-        )
+        currentUsers.map((user) => {
+          if (user.id !== editingUser.id) {
+            return user;
+          }
+
+          return {
+            ...mapBackendUser(response),
+            department: user.department,
+          };
+        })
       );
     }
 
@@ -150,6 +387,8 @@ export default function AdminUsers() {
 
   function handleCloseInviteModal() {
     setIsInviteModalOpen(false);
+    setInviteDepartmentId('');
+    setInvitePermissionGroupId('');
     resetInviteForm();
   }
 
@@ -167,10 +406,25 @@ export default function AdminUsers() {
       },
     }) as BackendUser | null;
 
-    if (response) {
-      setUsers((currentUsers) => [mapBackendUser(response), ...currentUsers]);
-      handleCloseInviteModal();
+    if (!response) {
+      return;
     }
+
+    if (invitePermissionGroupId !== '') {
+      const linkedUser = await post('/permission-groups/users', {
+        body: {
+          permissionGroupId: invitePermissionGroupId,
+          userId: response.userId,
+        },
+      });
+
+      if (linkedUser) {
+        toast.success('Usuário vinculado ao departamento pelo grupo de permissão.');
+      }
+    }
+
+    await loadUsers();
+    handleCloseInviteModal();
   }
 
   return (
@@ -227,7 +481,7 @@ export default function AdminUsers() {
                 onChange={(e) => setDepartmentFilter(e.target.value)}
                 className={formStyles.select}
               >
-                {departments.map((department) => (
+                {departmentFilters.map((department) => (
                   <option key={department} value={department}>
                     {department === 'Todos' ? 'Departamento' : department}
                   </option>
@@ -257,10 +511,11 @@ export default function AdminUsers() {
 
       <AdminModal
         open={Boolean(editingUser)}
-        title="Editar papel"
+        title="Editar usuário"
         titleId="role-modal-title"
         description={editingUser?.name}
         onClose={handleCloseRoleModal}
+        panelClassName={SCROLLABLE_USER_MODAL_PANEL}
         actions={
           <>
             <button
@@ -287,6 +542,69 @@ export default function AdminUsers() {
               <span>{editingUser.email}</span>
               <strong className="text-[var(--text-primary)]">{editingUser.department}</strong>
             </div>
+
+            <fieldset className={modalStyles.body}>
+              <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Departamento de acesso</legend>
+
+              <div className={adminStyles.formGrid}>
+                <label className={formStyles.label}>
+                  <span>Departamento</span>
+                  <select
+                    className={formStyles.select}
+                    value={selectedDepartmentId}
+                    onChange={(event) => handleDepartmentChange(event.target.value ? Number(event.target.value) : '')}
+                  >
+                    <option value="">Selecione um departamento</option>
+                    {departments.map((department) => (
+                      <option key={department.departmentId} value={department.departmentId}>
+                        {department.departmentNm}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className={formStyles.label}>
+                  <span>Grupo de permissão</span>
+                  <select
+                    className={formStyles.select}
+                    value={selectedPermissionGroupId}
+                    disabled={selectedDepartmentId === '' || availablePermissionGroups.length === 0}
+                    onChange={(event) => setSelectedPermissionGroupId(event.target.value ? Number(event.target.value) : '')}
+                  >
+                    <option value="">
+                      {selectedDepartmentId === ''
+                        ? 'Selecione um departamento'
+                        : 'Selecione um grupo'}
+                    </option>
+                    {availablePermissionGroups.map((group) => (
+                      <option key={group.permissionGroupId} value={group.permissionGroupId}>
+                        {group.permissionGroupNm}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="rounded-2xl border border-[var(--border-neutral)] bg-[var(--bg-body)] p-4 text-sm leading-6 text-[var(--text-secondary)]">
+                {selectedDepartmentId !== '' && availablePermissionGroups.length === 0
+                  ? 'Nenhum grupo de permissão ativo contém este departamento. Vincule o departamento a um grupo antes de adicionar usuários.'
+                  : 'O vínculo adiciona o usuário ao grupo escolhido. Os departamentos desse grupo passam a aparecer no cadastro do usuário.'}
+              </div>
+
+              <button
+                type="button"
+                className={buttonStyles.secondary}
+                onClick={handleLinkUserDepartment}
+                disabled={
+                  loading ||
+                  isLinkingDepartment ||
+                  selectedDepartmentId === '' ||
+                  selectedPermissionGroupId === ''
+                }
+              >
+                {isLinkingDepartment ? 'Vinculando...' : 'Vincular departamento'}
+              </button>
+            </fieldset>
 
             <fieldset className={modalStyles.body}>
               <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Novo papel</legend>
@@ -412,6 +730,55 @@ export default function AdminUsers() {
             {inviteErrors.password && <p className={formStyles.error}>{inviteErrors.password.message}</p>}
           </label>
         </div>
+
+        <fieldset className={modalStyles.body}>
+          <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Departamento de acesso opcional</legend>
+
+          <div className={adminStyles.formGrid}>
+            <label className={formStyles.label}>
+              <span>Departamento</span>
+              <select
+                className={formStyles.select}
+                value={inviteDepartmentId}
+                onChange={(event) => handleInviteDepartmentChange(event.target.value ? Number(event.target.value) : '')}
+              >
+                <option value="">Criar sem departamento</option>
+                {departments.map((department) => (
+                  <option key={department.departmentId} value={department.departmentId}>
+                    {department.departmentNm}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className={formStyles.label}>
+              <span>Grupo de permissão</span>
+              <select
+                className={formStyles.select}
+                value={invitePermissionGroupId}
+                disabled={inviteDepartmentId === '' || availableInvitePermissionGroups.length === 0}
+                onChange={(event) => setInvitePermissionGroupId(event.target.value ? Number(event.target.value) : '')}
+              >
+                <option value="">
+                  {inviteDepartmentId === ''
+                    ? 'Selecione um departamento'
+                    : 'Selecione um grupo'}
+                </option>
+                {availableInvitePermissionGroups.map((group) => (
+                  <option key={group.permissionGroupId} value={group.permissionGroupId}>
+                    {group.permissionGroupNm}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border-neutral)] bg-[var(--bg-body)] p-4 text-sm leading-6 text-[var(--text-secondary)]">
+            {inviteDepartmentId !== '' && availableInvitePermissionGroups.length === 0
+              ? 'Nenhum grupo de permissão ativo contém este departamento. O usuário será criado sem vínculo.'
+              : 'Se preenchido, o usuário será criado e depois adicionado ao grupo escolhido usando o endpoint de vínculo existente.'}
+          </div>
+        </fieldset>
 
         <fieldset className={modalStyles.body}>
           <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Papel inicial</legend>

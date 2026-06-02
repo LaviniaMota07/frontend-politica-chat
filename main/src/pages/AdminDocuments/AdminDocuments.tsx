@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'rea
 import { FileText, Link2, RefreshCcw, Upload } from 'lucide-react';
 import { useFetch } from '../../hooks/useFetch';
 import {
+  type BackendDocumentsResponse,
   type BackendDepartment,
   type BackendSystem,
   type NewDocumentVersionResponse,
   type UploadedDocumentResponse,
   mapBackendDepartment,
+  mapBackendDocument,
   mapBackendSystem,
 } from '../../services/adminApi';
 import type { SessionDocument } from '../../interfaces/admin.interface';
@@ -26,10 +28,10 @@ function toggleNumber(values: number[], nextValue: number) {
 }
 
 export default function AdminDocuments() {
-  const { post, put, loading } = useFetch();
+  const { get, post, put, loading } = useFetch();
   const [departments, setDepartments] = useState<Array<{ id: number; name: string; acronym: string }>>([]);
   const [systems, setSystems] = useState<Array<{ id: number; name: string; acronym: string }>>([]);
-  const [sessionDocuments, setSessionDocuments] = useState<SessionDocument[]>([]);
+  const [documents, setDocuments] = useState<SessionDocument[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
 
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -85,27 +87,29 @@ export default function AdminDocuments() {
     getCursor: (system) => system.systemId,
   });
 
-  const loadOptions = useCallback(async () => {
+  const loadPageData = useCallback(async () => {
     setIsLoadingOptions(true);
-    const [departmentRows, systemRows] = await Promise.all([
+    const [departmentRows, systemRows, documentRows] = await Promise.all([
       fetchAllDepartments(),
       fetchAllSystems(),
+      get('/documents') as Promise<BackendDocumentsResponse | null>,
     ]);
 
     setDepartments(departmentRows.map(mapBackendDepartment));
     setSystems(systemRows.map(mapBackendSystem));
+    setDocuments((documentRows?.data ?? []).map(mapBackendDocument));
     setIsLoadingOptions(false);
-  }, [fetchAllDepartments, fetchAllSystems]);
+  }, [fetchAllDepartments, fetchAllSystems, get]);
 
   useEffect(() => {
     queueMicrotask(() => {
-      void loadOptions();
+      void loadPageData();
     });
-  }, [loadOptions]);
+  }, [loadPageData]);
 
   const selectedDocument = useMemo(
-    () => sessionDocuments.find((document) => document.id === syncDocumentId),
-    [sessionDocuments, syncDocumentId],
+    () => documents.find((document) => document.id === syncDocumentId),
+    [documents, syncDocumentId],
   );
 
   function handleUploadFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -154,7 +158,10 @@ export default function AdminDocuments() {
       systemIds: uploadSystemIds,
     };
 
-    setSessionDocuments((current) => [nextDocument, ...current]);
+    setDocuments((current) => [
+      nextDocument,
+      ...current.filter((document) => document.id !== nextDocument.id),
+    ]);
     setVersionValue('fileId', nextDocument.id);
     setSyncValue('documentId', nextDocument.id);
     setSyncDepartmentIds(uploadDepartmentIds);
@@ -185,7 +192,7 @@ export default function AdminDocuments() {
     }) as NewDocumentVersionResponse | null;
 
     if (response) {
-      setSessionDocuments((current) =>
+      setDocuments((current) =>
         current.map((document) =>
           document.id === response.documentId
             ? {
@@ -220,7 +227,7 @@ export default function AdminDocuments() {
       }),
     ]);
 
-    setSessionDocuments((current) =>
+    setDocuments((current) =>
       current.map((document) =>
         document.id === data.documentId
           ? { ...document, departmentIds: syncDepartmentIds, systemIds: syncSystemIds }
@@ -233,7 +240,7 @@ export default function AdminDocuments() {
     setSyncValue('documentId', documentId);
     setVersionValue('fileId', documentId);
 
-    const document = sessionDocuments.find((item) => item.id === documentId);
+    const document = documents.find((item) => item.id === documentId);
 
     if (document) {
       setSyncDepartmentIds(document.departmentIds);
@@ -252,7 +259,7 @@ export default function AdminDocuments() {
 
         <AdminStatsGrid
           cards={[
-            { label: 'Documentos nesta sessão', value: sessionDocuments.length },
+            { label: 'Documentos cadastrados', value: documents.length },
             { label: 'Departamentos disponíveis', value: departments.length },
             { label: 'Sistemas disponíveis', value: systems.length },
             { label: 'Backend', value: 'Upload' },
@@ -330,7 +337,7 @@ export default function AdminDocuments() {
             <header className={modalStyles.header}>
               <div>
                 <h2 className={modalStyles.title}>Nova versão</h2>
-                <p className={modalStyles.description}>Use um ID de documento existente ou selecione um criado nesta sessão.</p>
+                <p className={modalStyles.description}>Use um ID de documento existente ou selecione um documento cadastrado.</p>
               </div>
               <RefreshCcw size={20} />
             </header>
@@ -344,7 +351,7 @@ export default function AdminDocuments() {
                   onChange={(event) => setVersionValue('fileId', event.target.value)}
                 >
                   <option value="">Informar manualmente abaixo</option>
-                  {sessionDocuments.map((document) => (
+                  {documents.map((document) => (
                     <option key={document.id} value={document.id}>{document.title}</option>
                   ))}
                 </select>
@@ -396,14 +403,14 @@ export default function AdminDocuments() {
 
             <div className={`${modalStyles.body} ${adminStyles.formGrid}`}>
               <label className={formStyles.label}>
-                <span>Documento da sessão</span>
+                <span>Documento cadastrado</span>
                 <select
                   className={formStyles.select}
                   value={syncDocumentId}
                   onChange={(event) => handleSelectDocument(event.target.value)}
                 >
                   <option value="">Informar manualmente abaixo</option>
-                  {sessionDocuments.map((document) => (
+                  {documents.map((document) => (
                     <option key={document.id} value={document.id}>{document.title}</option>
                   ))}
                 </select>
@@ -424,7 +431,7 @@ export default function AdminDocuments() {
             {selectedDocument && (
               <div className={`${adminStyles.deleteBody} mx-6 mb-4`}>
                 <strong>Documento selecionado: {selectedDocument.title}</strong>
-                <span>Versão atual conhecida nesta sessão: {selectedDocument.version}</span>
+                <span>Versão atual conhecida: {selectedDocument.version}</span>
               </div>
             )}
 
@@ -466,15 +473,15 @@ export default function AdminDocuments() {
 
         <section className={`${adminStyles.section} mt-5`}>
           <div className={adminStyles.sectionHeader}>
-            <h2 className={adminStyles.sectionTitle}>Documentos criados nesta sessão</h2>
+            <h2 className={adminStyles.sectionTitle}>Documentos cadastrados</h2>
           </div>
 
           <AdminTable
             columns={['Título', 'ID', 'Versão', 'Status', 'Ação']}
-            isEmpty={sessionDocuments.length === 0}
-            emptyMessage="O backend atual não expõe listagem de documentos. Documentos enviados aparecerão aqui durante a sessão atual."
+            isEmpty={documents.length === 0}
+            emptyMessage="Nenhum documento cadastrado até o momento."
           >
-            {sessionDocuments.map((document) => (
+            {documents.map((document) => (
               <tr key={document.id}>
                 <td className={adminStyles.td}>
                   <div className={adminStyles.userCell}>

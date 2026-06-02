@@ -20,6 +20,30 @@ export interface BackendDepartment {
   active: boolean;
 }
 
+export interface BackendPermissionGroup {
+  permissionGroupId: number;
+  permissionGroupNm: string;
+  active: boolean;
+}
+
+export interface BackendPermissionGroupUser {
+  userId: number;
+  name: string;
+  email: string;
+  active: boolean;
+}
+
+export interface PermissionGroupPaginationResponse {
+  data: BackendPermissionGroup[];
+  totalItems: number;
+  pages: number;
+}
+
+export interface PermissionGroupUsersScrollingResponse {
+  data: BackendPermissionGroupUser[];
+  finish: boolean;
+}
+
 export interface BackendSystem {
   systemId: number;
   systemNm: string;
@@ -38,6 +62,29 @@ export interface BackendModelIaKey {
   modelKey: string;
   qtnToken: number | string;
   active: boolean;
+}
+
+export interface BackendDocument {
+  documentId: string;
+  title: string | null;
+  active: boolean;
+  lastUpdateAt: string;
+  lastVersionId: string | null;
+  lastVersion: {
+    documentVersionId: string;
+    version: string;
+    status: 'PROCESSING' | 'DONE' | 'ERROR' | null;
+    active: boolean;
+    createdAt?: string;
+  } | null;
+  departmentIds: number[];
+  systemIds: number[];
+  authorName: string;
+}
+
+export interface BackendDocumentsResponse {
+  data: BackendDocument[];
+  finished: boolean;
 }
 
 export interface CatalogItem {

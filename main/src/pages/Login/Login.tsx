@@ -72,12 +72,12 @@ export default function Login() {
             <ShieldCheck size={20} strokeWidth={1.8} />
           </span>
           <span className="font-[var(--heading)] text-sm font-extrabold tracking-[-0.025em] text-[var(--text-inverse)]">
-            Assistente de Políticas
+            Norma AI
           </span>
         </div>
 
         <div>
-          <h1 className="font-[var(--heading)] text-[2.2rem] font-extrabold leading-[1.15] tracking-[-0.045em] text-[var(--text-inverse)]">
+          <h1 className="text-white text-[2.2rem] font-extrabold leading-[1.15] tracking-[-0.045em]">
             Consulte normas.<br />Entenda processos.<br />Decida com confiança.
           </h1>
           <ul className="mt-8 flex flex-col gap-3">
@@ -95,7 +95,7 @@ export default function Login() {
         </div>
 
         <p className="text-xs text-[var(--text-inverse)]/30">
-          © {new Date().getFullYear()} AI Observatory
+          © {new Date().getFullYear()} Norma AI | Starian | Unit | Squad 8
         </p>
       </aside>
 

@@ -43,7 +43,7 @@ export function UsersTable({ users, onEditRole }: UsersTableProps) {
               className={adminStyles.editButton}
               onClick={() => onEditRole(user)}
             >
-              Editar papel
+              Editar acesso
             </button>
           </td>
         </tr>

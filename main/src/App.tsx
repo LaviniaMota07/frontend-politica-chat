@@ -9,6 +9,7 @@ import ChatRoom from './pages/Chat/ChatRoom';
 import AdminUsers from './pages/AdminUsers/AdminUsers';
 import AdminDocuments from './pages/AdminDocuments/AdminDocuments';
 import AdminDepartments, { AdminSystems } from './pages/AdminCatalogs/AdminCatalogs';
+import AdminPermissionGroups from './pages/AdminPermissionGroups/AdminPermissionGroups';
 import AdminTokens from './pages/AdminTokens/AdminTokens';
 import ProfileEdit from './pages/ProfileEdit/ProfileEdit';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -90,6 +91,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['1']}>
               <AdminSystems />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/permission-groups"
+          element={
+            <ProtectedRoute allowedRoles={['1']}>
+              <AdminPermissionGroups />
             </ProtectedRoute>
           }
         />
