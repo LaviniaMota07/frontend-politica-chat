@@ -69,21 +69,46 @@ export interface BackendDocument {
   title: string | null;
   active: boolean;
   lastUpdateAt: string;
-  lastVersionId: string | null;
-  lastVersion: {
-    documentVersionId: string;
-    version: string;
-    status: 'PROCESSING' | 'DONE' | 'ERROR' | null;
-    active: boolean;
-    createdAt?: string;
-  } | null;
-  departmentIds: number[];
-  systemIds: number[];
+  lastVersionId?: string | null;
+  lastVersion: BackendDocumentVersionSummary | null;
+  departmentIds?: number[];
+  systemIds?: number[];
   authorName: string;
 }
 
 export interface BackendDocumentsResponse {
   data: BackendDocument[];
+  finished: boolean;
+}
+
+export type DocumentProcessingStatus = 'PROCESSING' | 'DONE' | 'ERROR';
+
+export interface BackendDocumentVersionSummary {
+  documentVersionId: string;
+  version: string;
+  status: DocumentProcessingStatus | null;
+  active: boolean;
+  createdAt?: string;
+}
+
+export interface BackendDocumentDetail extends BackendDocument {
+  departmentIds: number[];
+  systemIds: number[];
+}
+
+export interface BackendDocumentVersion {
+  documentVersionId: string;
+  documentId: string;
+  version: string;
+  documentPath: string;
+  hash: string;
+  status: DocumentProcessingStatus | null;
+  createdAt: string;
+  authorName: string;
+}
+
+export interface BackendDocumentVersionsResponse {
+  data: BackendDocumentVersion[];
   finished: boolean;
 }
 
@@ -134,7 +159,8 @@ export interface SessionDocument {
   title: string;
   version: string;
   status: string;
-  lastVersionId: string | null;
   departmentIds: number[];
   systemIds: number[];
+  authorName: string;
+  lastUpdateAt: string;
 }

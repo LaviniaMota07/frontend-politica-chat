@@ -63,7 +63,6 @@ export interface SendMessageSocketPayload {
   chatId: string;
   messageText: string;
   modelIaId: number;
-  randomUUID: string;
   selectedDepartments: number[];
   selectedSystems: number[];
 }

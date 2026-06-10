@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 import toast from 'react-hot-toast';
 import type { ChatMessage, MessageResponseSocketPayload, SendMessageSocketPayload } from '../types/chat.types';
 import type { ChatSocketRef } from './useSocketConnection';
+import { createClientMessageId } from '../utils/chat.helpers';
 
 interface ChatUser {
   userId?: number;
@@ -56,7 +57,7 @@ export function useChatSend({
     setInputValueState('');
 
     const userMessage: ChatMessage = {
-      messageId: crypto.randomUUID(),
+      messageId: createClientMessageId(),
       sender: 'user',
       messageText: trimmed,
       sendAt: new Date().toISOString(),
@@ -81,7 +82,6 @@ export function useChatSend({
       chatId,
       messageText: trimmed,
       modelIaId,
-      randomUUID: crypto.randomUUID(),
       selectedDepartments,
       selectedSystems,
     };
@@ -119,7 +119,7 @@ export function useChatSend({
 
       setMessages((prev) => {
         const botMsg: ChatMessage = {
-          messageId: res.messageId || crypto.randomUUID(),
+          messageId: res.messageId || createClientMessageId(),
           sender: 'assistant',
           messageText: res.messageText,
           sendAt: res.timestamp || new Date().toISOString(),

@@ -48,9 +48,34 @@ export function ChatInput({
     ? `${sourcesCount} fonte${sourcesCount > 1 ? 's' : ''}`
     : 'Fontes aguardando backend';
 
+  const shellRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const [departmentSearch, setDepartmentSearch] = useState('');
   const [systemSearch, setSystemSearch] = useState('');
+
+  useEffect(() => {
+    const shell = shellRef.current;
+
+    if (!shell) {
+      return;
+    }
+
+    const updateInputHeight = () => {
+      document.documentElement.style.setProperty('--chat-input-height', `${shell.offsetHeight}px`);
+    };
+
+    updateInputHeight();
+
+    const resizeObserver = new ResizeObserver(updateInputHeight);
+    resizeObserver.observe(shell);
+    window.addEventListener('resize', updateInputHeight);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateInputHeight);
+      document.documentElement.style.removeProperty('--chat-input-height');
+    };
+  }, []);
 
   useEffect(() => {
     const input = inputRef.current;
@@ -71,7 +96,7 @@ export function ChatInput({
   }
 
   return (
-    <div className={chatStyles.inputShell}>
+    <div className={chatStyles.inputShell} ref={shellRef}>
       <div className={chatStyles.inputWrapper}>
         <div className={chatStyles.filterStrip} aria-label="Filtros da conversa">
 
@@ -134,7 +159,7 @@ export function ChatInput({
         />
 
         <div className={chatStyles.inputActions}>
-          <span className="text-xs font-semibold text-[var(--text-muted)]">{sourcesLabel}</span>
+          <span className="text-xs font-semibold text-(--text-muted)">{sourcesLabel}</span>
 
           <button
             type="button"

@@ -14,7 +14,6 @@ import {
   type BackendModelIa,
   type BackendModelIaKey,
   mapBackendModelKey,
-  previewModelKey,
 } from '../../services/adminApi';
 import { AdminStatsGrid } from '../../components/admin/AdminStatsGrid';
 import { AdminTable } from '../../components/admin/AdminTable';
@@ -110,10 +109,7 @@ export default function AdminTokens() {
   const filteredKeys = useMemo(() => {
     const searchValue = search.toLowerCase();
 
-    return keys.filter((key) =>
-      key.modelName.toLowerCase().includes(searchValue) ||
-      key.modelKey.toLowerCase().includes(searchValue),
-    );
+    return keys.filter((key) => key.modelName.toLowerCase().includes(searchValue));
   }, [keys, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredKeys.length / TOKENS_PER_PAGE));
@@ -312,7 +308,7 @@ export default function AdminTokens() {
                 <input
                   className={`${formStyles.input} min-w-[260px] pl-10`}
                   type="text"
-                  placeholder="Buscar por modelo ou chave..."
+                  placeholder="Buscar por modelo..."
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                 />
@@ -321,7 +317,7 @@ export default function AdminTokens() {
           </div>
 
           <AdminTable
-            columns={['IA', 'Chave gerada', 'Tokens da chave', 'Ações']}
+            columns={['IA', 'Tokens da chave', 'Ações']}
             isLoading={isLoading}
             loadingMessage="Carregando chaves..."
             isEmpty={filteredKeys.length === 0}
@@ -333,12 +329,6 @@ export default function AdminTokens() {
                   <div className={adminStyles.userCell}>
                     <strong className={adminStyles.userName}>{key.modelName}</strong>
                     <span className={adminStyles.userEmail}>Modelo #{key.modelIaId}</span>
-                  </div>
-                </td>
-                <td className={adminStyles.td}>
-                  <div className={adminStyles.userCell}>
-                    <strong className={adminStyles.monoValue}>{previewModelKey(key.modelKey)}</strong>
-                    <span className={adminStyles.userEmail}>Chave UUID gerada pelo backend</span>
                   </div>
                 </td>
                 <td className={adminStyles.td}><strong className="font-bold text-amber-700">{formatTokens(key.qtnToken)}</strong></td>
@@ -447,7 +437,7 @@ export default function AdminTokens() {
         as="form"
         title="Editar tokens da chave"
         titleId="edit-key-modal-title"
-        description={editingKey ? `${editingKey.modelName} - ${previewModelKey(editingKey.modelKey)}` : undefined}
+        description={editingKey ? editingKey.modelName : undefined}
         onClose={closeEditKeyModal}
         onSubmit={handleUpdateKeySubmit(handleUpdateKey)}
         actions={

@@ -8,6 +8,7 @@ import Chat from './pages/Chat/Chat';
 import ChatRoom from './pages/Chat/ChatRoom';
 import AdminUsers from './pages/AdminUsers/AdminUsers';
 import AdminDocuments from './pages/AdminDocuments/AdminDocuments';
+import AdminDocumentDetail from './pages/AdminDocuments/AdminDocumentDetail';
 import AdminDepartments, { AdminSystems } from './pages/AdminCatalogs/AdminCatalogs';
 import AdminPermissionGroups from './pages/AdminPermissionGroups/AdminPermissionGroups';
 import AdminTokens from './pages/AdminTokens/AdminTokens';
@@ -71,6 +72,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['1']}>
               <AdminDocuments />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/documents/:documentId"
+          element={
+            <ProtectedRoute allowedRoles={['1']}>
+              <AdminDocumentDetail />
             </ProtectedRoute>
           }
         />

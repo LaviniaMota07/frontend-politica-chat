@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import type { ChatHistoryResponse, ChatMessage, ChatMessageResponse, NewMessageSocketPayload } from '../types/chat.types';
 import type { ChatSocketRef } from './useSocketConnection';
+import { createClientMessageId } from '../utils/chat.helpers';
 
 interface UseChatMessagesParams {
   chatId: string;
@@ -67,7 +68,7 @@ export function useChatMessages({
       setMessages((prev) => [
         ...prev,
         {
-          messageId: crypto.randomUUID(),
+          messageId: createClientMessageId(),
           sender: 'user',
           messageText: msg.messageText,
           sendAt: msg.timestamp || new Date().toISOString(),
@@ -116,7 +117,7 @@ function mapHistoryMessage(msg: ChatMessageResponse): ChatMessage {
   const isUser = msg.userId !== null && msg.userId !== undefined;
 
   return {
-    messageId: msg.messageId || crypto.randomUUID(),
+    messageId: msg.messageId || createClientMessageId(),
     sender: isUser ? 'user' : 'assistant',
     messageText: msg.messageText,
     sendAt: msg.sendAt || msg.timestamp || new Date().toISOString(),

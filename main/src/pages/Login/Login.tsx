@@ -72,7 +72,7 @@ export default function Login() {
             <ShieldCheck size={20} strokeWidth={1.8} />
           </span>
           <span className="font-[var(--heading)] text-sm font-extrabold tracking-[-0.025em] text-[var(--text-inverse)]">
-            Norma AI
+            NormaHub
           </span>
         </div>
 
@@ -95,7 +95,7 @@ export default function Login() {
         </div>
 
         <p className="text-xs text-[var(--text-inverse)]/30">
-          © {new Date().getFullYear()} Norma AI | Starian | Unit | Squad 8
+          © {new Date().getFullYear()} NormaHub | Starian | Unit | Squad 8
         </p>
       </aside>
 

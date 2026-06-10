@@ -20,6 +20,9 @@ export type {
   PermissionGroupPaginationResponse,
   PermissionGroupUsersScrollingResponse,
   BackendDocument,
+  BackendDocumentDetail,
+  BackendDocumentVersion,
+  BackendDocumentVersionsResponse,
   BackendDocumentsResponse,
   BackendSystem,
   BackendModelIa,
@@ -78,9 +81,10 @@ export function mapBackendDocument(document: BackendDocument): SessionDocument {
     title: document.title ?? 'Sem título',
     version: document.lastVersion?.version ?? 'Sem versão',
     status: document.lastVersion?.status ?? 'Sem status',
-    lastVersionId: document.lastVersionId,
     departmentIds: document.departmentIds ?? [],
     systemIds: document.systemIds ?? [],
+    authorName: document.authorName,
+    lastUpdateAt: document.lastUpdateAt,
   };
 }
 
@@ -96,12 +100,4 @@ export function mapBackendModelKey(
     qtnToken: Number(key.qtnToken),
     active: key.active,
   };
-}
-
-export function previewModelKey(modelKey: string) {
-  if (modelKey.length <= 12) {
-    return modelKey;
-  }
-
-  return `${modelKey.slice(0, 8)}...${modelKey.slice(-6)}`;
 }

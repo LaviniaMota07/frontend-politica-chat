@@ -66,7 +66,7 @@ export const uploadDocumentSchema = z.object({
 export type UploadDocumentFormData = z.infer<typeof uploadDocumentSchema>;
 
 export const newVersionSchema = z.object({
-  fileId: z.string().min(1, 'ID do documento é obrigatório'),
+  fileId: z.string().min(1, 'Selecione um documento'),
   version: z
     .string()
     .min(1, 'Versão é obrigatória')
@@ -76,7 +76,7 @@ export const newVersionSchema = z.object({
 export type NewVersionFormData = z.infer<typeof newVersionSchema>;
 
 export const syncLinksSchema = z.object({
-  documentId: z.string().min(1, 'ID do documento é obrigatório'),
+  documentId: z.string().min(1, 'Selecione um documento'),
 });
 
 export type SyncLinksFormData = z.infer<typeof syncLinksSchema>;

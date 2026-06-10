@@ -107,10 +107,10 @@ export const chatStyles = {
   eyebrow: 'text-[0.68rem] font-bold uppercase tracking-[0.18em] text-[var(--accent-strong)]',
   headerTitle: 'mt-1 font-[var(--heading)] text-2xl font-extrabold tracking-[-0.045em] text-[var(--text-primary)]',
   headerActions: 'flex items-center gap-3',
-  content: 'flex min-h-0 flex-1 flex-col overflow-hidden',
+  content: 'flex min-h-0 flex-1 flex-col overflow-hidden pb-[calc(var(--chat-input-height,220px)+0.75rem)]',
   messages: 'min-h-0 flex-1 overflow-y-auto px-8 py-6 max-[760px]:px-4',
   messagesInner: 'mx-auto flex w-full max-w-4xl flex-col gap-5',
-  inputShell: 'bg-[var(--bg-body)] px-8 pb-6 pt-3 max-[760px]:px-4',
+  inputShell: 'fixed bottom-0 left-[344px] right-0 z-30 bg-[var(--bg-body)] px-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 max-[900px]:left-0 max-[760px]:px-4',
   inputWrapper:
     'mx-auto flex max-w-4xl flex-col gap-3 rounded-[20px] border border-[var(--border-neutral)] bg-[var(--bg-surface)] p-4 shadow-[0_18px_50px_rgba(31,29,25,0.1)]',
   textArea:

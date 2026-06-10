@@ -193,7 +193,7 @@ export default function Sidebar() {
               <ShieldCheck size={20} strokeWidth={1.8} />
             </span>
             <span className={sidebarStyles.brandText}>
-              <span className={sidebarStyles.brandName}>Norma AI</span>
+              <span className={sidebarStyles.brandName}>NormaHub</span>
               <span className={sidebarStyles.brandCaption}>Chat de Documentos</span>
             </span>
           </NavLink>
