@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { Share2 } from 'lucide-react';
 import { useLocation, useParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import ShareChat from '../../components/shareChat/ShareChat';
 import { ChatInput } from './components/ChatInput';
 import { ChatMessages } from './components/ChatMessages';
 import { useChatAiProviders } from './hooks/useChatAiProviders';
@@ -8,7 +10,7 @@ import { useChat } from './hooks/useChat';
 import { useChatFilterOptions } from './hooks/useChatFilterOptions';
 import { chatDepartments, chatSystems } from './mocks/chat.mock';
 import type { ChatNavigationState } from './types/chat.types';
-import { chatStyles } from '../../utils/tailwindStyles';
+import { buttonStyles, chatStyles } from '../../utils/tailwindStyles';
 
 export default function ChatRoom() {
   const { chatId } = useParams<{ chatId: string }>();
@@ -23,6 +25,7 @@ export default function ChatRoom() {
   const [selectedSystems, setSelectedSystems] = useState<number[]>(
     navigationState.selectedSystems ?? []
   );
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const { aiProviders, selectedAiProvider, setSelectedAiProvider } = useChatAiProviders(
     navigationState.selectedAiProvider ?? 1
   );
@@ -54,6 +57,17 @@ export default function ChatRoom() {
       <section className={chatStyles.main}>
         <div className={chatStyles.content}>
           <div className="flex h-full min-h-0 w-full flex-col">
+            <div className="flex justify-end px-8 pt-4 max-[760px]:px-4">
+              <button
+                type="button"
+                className={buttonStyles.icon}
+                onClick={() => setIsShareOpen(true)}
+                aria-label="Compartilhar chat"
+                title="Compartilhar"
+              >
+                <Share2 size={16} />
+              </button>
+            </div>
             <ChatMessages
               messages={messages}
               currentUserId={user.userId ?? null}
@@ -93,6 +107,10 @@ export default function ChatRoom() {
           onAiProviderChange={setSelectedAiProvider}
         />
       </section>
+
+      {isShareOpen && (
+        <ShareChat onClose={() => setIsShareOpen(false)} />
+      )}
     </main>
   );
 }

@@ -162,5 +162,7 @@ export const sidebarStyles = {
   profileEmail: 'truncate text-xs text-[var(--text-inverse)]/55',
   profileLink:
     'mt-3 inline-flex items-center gap-2 rounded-xl text-xs font-bold text-[var(--accent-soft)] transition hover:text-[var(--text-inverse)]',
+  logoutButton:
+    'mt-6 flex w-fit items-center gap-2 rounded-xl text-xs font-bold text-[var(--text-inverse)]/60 transition hover:text-[var(--text-inverse)]',
   backdrop: 'fixed inset-0 z-30 bg-[rgba(31,29,25,0.45)] min-[901px]:hidden',
 };

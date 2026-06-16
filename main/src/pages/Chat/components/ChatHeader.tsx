@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Share2 } from 'lucide-react';
-import ShareChat from '../../../components/ShareChat/ShareChat';
+import ShareChat from '../../../components/shareChat/ShareChat';
 import CreateChatModal from '../../../components/CreateChatModal/CreateChatModal';
 import { buttonStyles, chatStyles } from '../../../utils/tailwindStyles';
 import { cn } from '@/lib/utils';

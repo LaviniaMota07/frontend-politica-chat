@@ -6,6 +6,7 @@ import {
   Grid2X2,
   KeyRound,
   Layers3,
+  LogOut,
   Pencil,
   Plus,
   ShieldCheck,
@@ -21,11 +22,11 @@ import { UploadDocumentModal } from '../../components/admin/UploadDocumentModal'
 import { buildChatScrollUrl, buildSharedChatScrollUrl } from '../../services/chatApi';
 
 export default function Sidebar() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const isAdmin = user.role === '1';
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [openCreateChat, setOpenCreateChat] = useState(false);
-  const { get } = useFetch<ChatListResponse>();
+  const { get, post } = useFetch<ChatListResponse>();
   const location = useLocation();
   const navigate = useNavigate();
   const isOnChat = location.pathname === '/chat' || location.pathname.startsWith('/chat/');
@@ -41,6 +42,15 @@ export default function Sidebar() {
   }, [get]);
 
   const handleClosePolicyModal = useCallback(() => setIsPolicyModalOpen(false), []);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await post('/user/logout');
+    } finally {
+      logout();
+      navigate('/login');
+    }
+  }, [post, logout, navigate]);
 
   return (
     <>
@@ -162,6 +172,11 @@ export default function Sidebar() {
               <Pencil size={15} strokeWidth={1.8} />
               Editar perfil
             </NavLink>
+
+            <button type="button" className={sidebarStyles.logoutButton} onClick={handleLogout}>
+              <LogOut size={15} strokeWidth={1.8} />
+              Sair
+            </button>
           </section>
         </div>
       </aside>
