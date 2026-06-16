@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import toast from 'react-hot-toast';
-import { Edit3, Power, Search } from 'lucide-react';
+import { Edit3, Power, Search, Users } from 'lucide-react';
 import { AdminModal } from '../../components/admin/AdminModal';
 import { AdminPagination } from '../../components/admin/AdminPagination';
 import { AdminStatsGrid } from '../../components/admin/AdminStatsGrid';
@@ -10,13 +10,18 @@ import { useFetch } from '../../hooks/useFetch';
 import type {
   BackendDepartment,
   BackendPermissionGroup,
+  BackendPermissionGroupDetail,
+  BackendPermissionGroupUser,
   BackendSystem,
+  BackendUser,
   PermissionGroupPaginationResponse,
 } from '../../services/adminApi';
 import { adminStyles, buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
 
 const GROUPS_PER_PAGE = 4;
 const PERMISSION_GROUPS_PAGE_SIZE = 100;
+const SCROLLABLE_MODAL_PANEL =
+  'w-full max-w-[640px] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[22px] border border-[var(--border-neutral)] border-t-[3px] border-t-[var(--accent)] bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-[0_28px_80px_rgba(31,29,25,0.24)]';
 
 interface PermissionGroupRow {
   id: number;
@@ -42,6 +47,34 @@ function formatAccessLabels(labels: string[]) {
   return labels.join(', ');
 }
 
+function toggleSetValue(values: Set<number>, value: number) {
+  const next = new Set(values);
+
+  if (next.has(value)) {
+    next.delete(value);
+  } else {
+    next.add(value);
+  }
+
+  return next;
+}
+
+function matchesUserSearch(
+  user: Pick<BackendPermissionGroupUser, 'name' | 'email'>,
+  search: string,
+) {
+  const normalizedSearch = search.trim().toLowerCase();
+
+  if (!normalizedSearch) {
+    return true;
+  }
+
+  return (
+    user.name.toLowerCase().includes(normalizedSearch) ||
+    user.email.toLowerCase().includes(normalizedSearch)
+  );
+}
+
 export default function AdminPermissionGroups() {
   const { get, post, patch, del, loading } = useFetch();
   const [permissionGroups, setPermissionGroups] = useState<PermissionGroupRow[]>([]);
@@ -56,6 +89,14 @@ export default function AdminPermissionGroups() {
   const [groupName, setGroupName] = useState('');
   const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<number[]>([]);
   const [selectedSystemIds, setSelectedSystemIds] = useState<number[]>([]);
+  const [managingGroup, setManagingGroup] = useState<PermissionGroupRow | null>(null);
+  const [allUsers, setAllUsers] = useState<BackendUser[]>([]);
+  const [groupMembers, setGroupMembers] = useState<BackendPermissionGroupUser[]>([]);
+  const [selectedToAdd, setSelectedToAdd] = useState<Set<number>>(() => new Set());
+  const [selectedToRemove, setSelectedToRemove] = useState<Set<number>>(() => new Set());
+  const [memberSearch, setMemberSearch] = useState('');
+  const [availableSearch, setAvailableSearch] = useState('');
+  const [isLoadingUsersModal, setIsLoadingUsersModal] = useState(false);
 
   const { fetchAll: fetchAllDepartments } = useCursorScroll<BackendDepartment>({
     endpoint: '/department/scrolling',
@@ -156,6 +197,26 @@ export default function AdminPermissionGroups() {
   const paginatedGroups = filteredGroups.slice(pageStart, pageStart + GROUPS_PER_PAGE);
   const activeGroups = permissionGroups.filter((group) => group.active).length;
 
+  const memberIdSet = useMemo(
+    () => new Set(groupMembers.map((member) => member.userId)),
+    [groupMembers],
+  );
+
+  const filteredGroupMembers = useMemo(
+    () => groupMembers.filter((member) => matchesUserSearch(member, memberSearch)),
+    [groupMembers, memberSearch],
+  );
+
+  const filteredAvailableUsers = useMemo(
+    () =>
+      allUsers
+        .filter((user) => !memberIdSet.has(user.userId))
+        .filter((user) => matchesUserSearch(user, availableSearch)),
+    [allUsers, availableSearch, memberIdSet],
+  );
+
+  const hasUserChanges = selectedToAdd.size > 0 || selectedToRemove.size > 0;
+
   useEffect(() => {
     queueMicrotask(() => setCurrentPage(1));
   }, [searchTerm, statusFilter]);
@@ -186,6 +247,81 @@ export default function AdminPermissionGroups() {
     setGroupName('');
     setSelectedDepartmentIds([]);
     setSelectedSystemIds([]);
+  }
+
+  function handleCloseManageUsers() {
+    setManagingGroup(null);
+    setAllUsers([]);
+    setGroupMembers([]);
+    setSelectedToAdd(new Set());
+    setSelectedToRemove(new Set());
+    setMemberSearch('');
+    setAvailableSearch('');
+    setIsLoadingUsersModal(false);
+  }
+
+  async function handleOpenManageUsers(group: PermissionGroupRow) {
+    setManagingGroup(group);
+    setSelectedToAdd(new Set());
+    setSelectedToRemove(new Set());
+    setMemberSearch('');
+    setAvailableSearch('');
+    setIsLoadingUsersModal(true);
+
+    const [allUsersResponse, groupDetail] = await Promise.all([
+      get('/user') as Promise<BackendUser[] | null>,
+      get(`/permission-groups/${group.id}`) as Promise<BackendPermissionGroupDetail | null>,
+    ]);
+
+    if (!groupDetail) {
+      setIsLoadingUsersModal(false);
+      setManagingGroup(null);
+      return;
+    }
+
+    const members = (groupDetail.permissionGroupUsers ?? []).map((entry) => entry.user);
+
+    setAllUsers(allUsersResponse ?? []);
+    setGroupMembers(members);
+    setIsLoadingUsersModal(false);
+  }
+
+  async function handleSaveGroupUsers() {
+    if (!managingGroup) {
+      return;
+    }
+
+    const addIds = [...selectedToAdd];
+    const removeIds = [...selectedToRemove];
+
+    if (addIds.length === 0 && removeIds.length === 0) {
+      handleCloseManageUsers();
+      return;
+    }
+
+    if (addIds.length > 0) {
+      const response = await post(`/permission-groups/${managingGroup.id}/users/bulk`, {
+        body: { userIds: addIds },
+      });
+
+      if (!response) {
+        return;
+      }
+    }
+
+    if (removeIds.length > 0) {
+      const removalResults = await Promise.all(
+        removeIds.map((userId) => del(`/permission-groups/${managingGroup.id}/users/${userId}`)),
+      );
+
+      if (removalResults.some((result) => !result)) {
+        return;
+      }
+    }
+
+    toast.success('Usuários do grupo atualizados.');
+    await loadPageData();
+    handleCloseManageUsers();
   }
 
   async function syncGroupAccess(
@@ -358,6 +494,15 @@ export default function AdminPermissionGroups() {
                     <button
                       type="button"
                       className={buttonStyles.icon}
+                      onClick={() => void handleOpenManageUsers(group)}
+                      aria-label={`Gerenciar usuários de ${group.name}`}
+                      title="Gerenciar usuários"
+                    >
+                      <Users size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className={buttonStyles.icon}
                       onClick={() => handleOpenEdit(group)}
                       aria-label={`Editar ${group.name}`}
                       title="Editar"
@@ -467,6 +612,124 @@ export default function AdminPermissionGroups() {
             ))}
           </div>
         </fieldset>
+      </AdminModal>
+
+      <AdminModal
+        open={managingGroup !== null}
+        title={managingGroup ? `Usuários de ${managingGroup.name}` : 'Usuários do grupo'}
+        titleId="permission-group-users-modal-title"
+        description="Marque usuários para adicionar ou remover do grupo de permissão."
+        onClose={handleCloseManageUsers}
+        panelClassName={SCROLLABLE_MODAL_PANEL}
+        actions={
+          <>
+            <button type="button" className={buttonStyles.secondary} onClick={handleCloseManageUsers}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className={buttonStyles.primary}
+              disabled={loading || isLoadingUsersModal || !hasUserChanges}
+              onClick={() => void handleSaveGroupUsers()}
+            >
+              Salvar alterações
+            </button>
+          </>
+        }
+      >
+        {isLoadingUsersModal ? (
+          <p className={`${modalStyles.body} text-sm text-[var(--text-secondary)]`}>
+            Carregando usuários do grupo...
+          </p>
+        ) : (
+          <>
+            <fieldset className={modalStyles.body}>
+              <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">
+                Membros atuais
+              </legend>
+
+              <label className={`${formStyles.label} mb-3`}>
+                <span>Buscar membros</span>
+                <input
+                  className={formStyles.input}
+                  type="text"
+                  placeholder="Nome ou e-mail"
+                  value={memberSearch}
+                  onChange={(event) => setMemberSearch(event.target.value)}
+                />
+              </label>
+
+              <div className="grid grid-cols-1 gap-3">
+                {filteredGroupMembers.length === 0 && (
+                  <span className="text-sm text-[var(--text-secondary)]">
+                    {groupMembers.length === 0
+                      ? 'Nenhum usuário vinculado a este grupo.'
+                      : 'Nenhum membro encontrado para a busca.'}
+                  </span>
+                )}
+
+                {filteredGroupMembers.map((member) => (
+                  <label key={member.userId} className={modalStyles.option}>
+                    <input
+                      type="checkbox"
+                      checked={selectedToRemove.has(member.userId)}
+                      onChange={() =>
+                        setSelectedToRemove((current) => toggleSetValue(current, member.userId))
+                      }
+                    />
+                    <span className={modalStyles.optionText}>
+                      <strong>{member.name}</strong>
+                      {member.email}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset className={modalStyles.body}>
+              <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">
+                Adicionar usuários
+              </legend>
+
+              <label className={`${formStyles.label} mb-3`}>
+                <span>Buscar usuários disponíveis</span>
+                <input
+                  className={formStyles.input}
+                  type="text"
+                  placeholder="Nome ou e-mail"
+                  value={availableSearch}
+                  onChange={(event) => setAvailableSearch(event.target.value)}
+                />
+              </label>
+
+              <div className="grid grid-cols-1 gap-3">
+                {filteredAvailableUsers.length === 0 && (
+                  <span className="text-sm text-[var(--text-secondary)]">
+                    {allUsers.length === groupMembers.length
+                      ? 'Todos os usuários ativos já estão neste grupo.'
+                      : 'Nenhum usuário disponível encontrado para a busca.'}
+                  </span>
+                )}
+
+                {filteredAvailableUsers.map((user) => (
+                  <label key={user.userId} className={modalStyles.option}>
+                    <input
+                      type="checkbox"
+                      checked={selectedToAdd.has(user.userId)}
+                      onChange={() =>
+                        setSelectedToAdd((current) => toggleSetValue(current, user.userId))
+                      }
+                    />
+                    <span className={modalStyles.optionText}>
+                      <strong>{user.name}</strong>
+                      {user.email}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </>
+        )}
       </AdminModal>
     </main>
   );

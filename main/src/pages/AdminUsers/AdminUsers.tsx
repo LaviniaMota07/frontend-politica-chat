@@ -14,7 +14,6 @@ import {
   mapBackendUser,
   roleToTypeUserId,
 } from '../../services/adminApi';
-import { useCursorScroll } from '../../hooks/useCursorScroll';
 import { AdminPagination } from '../../components/admin/AdminPagination';
 import { AdminModal } from '../../components/admin/AdminModal';
 import { adminStyles, buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
@@ -59,9 +58,14 @@ function formatUserDepartments(userId: number, accessByGroup: PermissionGroupAcc
   return Array.from(departmentNames).sort((first, second) => first.localeCompare(second)).join(', ');
 }
 
+function toggleNumber(values: number[], nextValue: number) {
+  return values.includes(nextValue)
+    ? values.filter((value) => value !== nextValue)
+    : [...values, nextValue];
+}
+
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
-  const [departments, setDepartments] = useState<BackendDepartment[]>([]);
   const [permissionGroups, setPermissionGroups] = useState<BackendPermissionGroup[]>([]);
   const [permissionGroupAccess, setPermissionGroupAccess] = useState<PermissionGroupAccess>({});
   const [search, setSearch] = useState('');
@@ -70,20 +74,13 @@ export default function AdminUsers() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [selectedRole, setSelectedRole] = useState<UserRole>('Default');
   const [selectedStatus, setSelectedStatus] = useState<UserStatus>('Ativo');
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | ''>('');
-  const [selectedPermissionGroupId, setSelectedPermissionGroupId] = useState<number | ''>('');
-  const [inviteDepartmentId, setInviteDepartmentId] = useState<number | ''>('');
-  const [invitePermissionGroupId, setInvitePermissionGroupId] = useState<number | ''>('');
-  const [isLinkingDepartment, setIsLinkingDepartment] = useState(false);
+  const [selectedGroupToAdd, setSelectedGroupToAdd] = useState<number | ''>('');
+  const [isUpdatingGroups, setIsUpdatingGroups] = useState(false);
+  const [invitePermissionGroupIds, setInvitePermissionGroupIds] = useState<number[]>([]);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const { get, post, patch, del, loading } = useFetch();
-  const { fetchAll: fetchAllDepartments } = useCursorScroll<BackendDepartment>({
-    endpoint: '/department/scrolling',
-    cursorParam: 'departmentId',
-    getCursor: (department) => department.departmentId,
-  });
 
   const {
     register: registerInvite,
@@ -167,30 +164,34 @@ export default function AdminUsers() {
 
   const loadUsers = useCallback(async () => {
     setIsLoadingUsers(true);
-    const [usersResponse, departmentRows, permissionGroupRows] = await Promise.all([
+    const [usersResponse, permissionGroupRows] = await Promise.all([
       get('/user') as Promise<BackendUser[] | null>,
-      fetchAllDepartments(),
       fetchAllPermissionGroups(),
     ]);
 
-    const activeDepartments = departmentRows.filter((department) => department.active);
     const accessByGroup = await fetchPermissionGroupAccess(permissionGroupRows);
 
-    setDepartments(activeDepartments);
     setPermissionGroups(permissionGroupRows);
     setPermissionGroupAccess(accessByGroup);
 
     if (usersResponse) {
-      setUsers(
-        usersResponse.map((user) => ({
-          ...mapBackendUser(user),
-          department: formatUserDepartments(user.userId, accessByGroup),
-        })),
-      );
+      const mappedUsers = usersResponse.map((user) => ({
+        ...mapBackendUser(user),
+        department: formatUserDepartments(user.userId, accessByGroup),
+      }));
+
+      setUsers(mappedUsers);
+      setEditingUser((current) => {
+        if (!current) {
+          return null;
+        }
+
+        return mappedUsers.find((user) => user.id === current.id) ?? current;
+      });
     }
 
     setIsLoadingUsers(false);
-  }, [fetchAllDepartments, fetchAllPermissionGroups, fetchPermissionGroupAccess, get]);
+  }, [fetchAllPermissionGroups, fetchPermissionGroupAccess, get]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -223,28 +224,38 @@ export default function AdminUsers() {
   const pageEnd = pageStart + USERS_PER_PAGE;
   const paginatedUsers = filteredUsers.slice(pageStart, pageEnd);
   const departmentFilters = ['Todos', ...new Set(users.map((user) => user.department))];
-  const availablePermissionGroups = permissionGroups.filter((group) => {
-    const selectedDepartment = Number(selectedDepartmentId);
+  const activePermissionGroups = permissionGroups.filter((group) => group.active);
 
-    if (!selectedDepartment) {
-      return false;
+  const getUserPermissionGroups = useCallback(
+    (userId: number) =>
+      permissionGroups.filter(
+        (group) =>
+          group.active &&
+          permissionGroupAccess[group.permissionGroupId]?.users.some(
+            (user) => user.userId === userId,
+          ),
+      ),
+    [permissionGroupAccess, permissionGroups],
+  );
+
+  const editingUserPermissionGroups = useMemo(
+    () => (editingUser ? getUserPermissionGroups(editingUser.id) : []),
+    [editingUser, getUserPermissionGroups],
+  );
+
+  const availableGroupsToAdd = useMemo(() => {
+    if (!editingUser) {
+      return [];
     }
 
-    return permissionGroupAccess[group.permissionGroupId]?.departments.some(
-      (department) => department.departmentId === selectedDepartment,
+    const linkedGroupIds = new Set(
+      editingUserPermissionGroups.map((group) => group.permissionGroupId),
     );
-  });
-  const availableInvitePermissionGroups = permissionGroups.filter((group) => {
-    const selectedDepartment = Number(inviteDepartmentId);
 
-    if (!selectedDepartment) {
-      return false;
-    }
-
-    return permissionGroupAccess[group.permissionGroupId]?.departments.some(
-      (department) => department.departmentId === selectedDepartment,
+    return activePermissionGroups.filter(
+      (group) => !linkedGroupIds.has(group.permissionGroupId),
     );
-  });
+  }, [activePermissionGroups, editingUser, editingUserPermissionGroups]);
 
   useEffect(() => {
     queueMicrotask(() => setCurrentPage(1));
@@ -254,81 +265,72 @@ export default function AdminUsers() {
     queueMicrotask(() => setCurrentPage((page) => Math.min(page, totalPages)));
   }, [totalPages]);
 
-  const getPermissionGroupsByDepartment = useCallback((departmentId: number) => {
-    return permissionGroups.filter((group) =>
-      permissionGroupAccess[group.permissionGroupId]?.departments.some(
-        (department) => department.departmentId === departmentId,
-      ),
-    );
-  }, [permissionGroupAccess, permissionGroups]);
-
-  function handleDepartmentChange(departmentId: number | '') {
-    setSelectedDepartmentId(departmentId);
-
-    if (departmentId === '') {
-      setSelectedPermissionGroupId('');
-      return;
-    }
-
-    const [firstAvailableGroup] = getPermissionGroupsByDepartment(departmentId);
-    setSelectedPermissionGroupId(firstAvailableGroup?.permissionGroupId ?? '');
-  }
-
-  function handleInviteDepartmentChange(departmentId: number | '') {
-    setInviteDepartmentId(departmentId);
-
-    if (departmentId === '') {
-      setInvitePermissionGroupId('');
-      return;
-    }
-
-    const [firstAvailableGroup] = getPermissionGroupsByDepartment(departmentId);
-    setInvitePermissionGroupId(firstAvailableGroup?.permissionGroupId ?? '');
-  }
-
   function handleOpenRoleModal(user: User) {
     setEditingUser(user);
     setSelectedRole(user.role);
     setSelectedStatus(user.status);
-    setSelectedDepartmentId('');
-    setSelectedPermissionGroupId('');
+    setSelectedGroupToAdd('');
   }
 
   function handleCloseRoleModal() {
     setEditingUser(null);
-    setSelectedDepartmentId('');
-    setSelectedPermissionGroupId('');
+    setSelectedGroupToAdd('');
   }
 
-  async function handleLinkUserDepartment() {
-    if (!editingUser || selectedPermissionGroupId === '' || selectedDepartmentId === '') {
+  async function handleAddPermissionGroup() {
+    if (!editingUser || selectedGroupToAdd === '') {
       return;
     }
 
-    const access = permissionGroupAccess[selectedPermissionGroupId];
-    const userAlreadyInGroup = access?.users.some((user) => user.userId === editingUser.id);
+    const userAlreadyInGroup = permissionGroupAccess[selectedGroupToAdd]?.users.some(
+      (user) => user.userId === editingUser.id,
+    );
 
     if (userAlreadyInGroup) {
-      toast.success('Usuário já está vinculado ao grupo deste departamento.');
+      toast.success('Usuário já está vinculado a este grupo de permissão.');
       return;
     }
 
-    setIsLinkingDepartment(true);
+    setIsUpdatingGroups(true);
 
     const response = await post('/permission-groups/users', {
       body: {
-        permissionGroupId: selectedPermissionGroupId,
+        permissionGroupId: selectedGroupToAdd,
         userId: editingUser.id,
       },
     });
 
     if (response) {
-      toast.success('Usuário vinculado ao departamento pelo grupo de permissão.');
+      toast.success('Grupo de permissão adicionado ao usuário.');
+      setSelectedGroupToAdd('');
       await loadUsers();
-      handleCloseRoleModal();
     }
 
-    setIsLinkingDepartment(false);
+    setIsUpdatingGroups(false);
+  }
+
+  async function handleRemovePermissionGroup(permissionGroupId: number) {
+    if (!editingUser) {
+      return;
+    }
+
+    setIsUpdatingGroups(true);
+
+    const response = await del(
+      `/permission-groups/${permissionGroupId}/users/${editingUser.id}`,
+      {
+        successAlert: {
+          title: 'Grupo removido',
+          message: 'O usuário foi desvinculado do grupo de permissão.',
+        },
+      },
+    );
+
+    if (response) {
+      await loadUsers();
+    }
+
+    setIsUpdatingGroups(false);
   }
 
   async function handleSaveRole() {
@@ -387,8 +389,7 @@ export default function AdminUsers() {
 
   function handleCloseInviteModal() {
     setIsInviteModalOpen(false);
-    setInviteDepartmentId('');
-    setInvitePermissionGroupId('');
+    setInvitePermissionGroupIds([]);
     resetInviteForm();
   }
 
@@ -410,16 +411,26 @@ export default function AdminUsers() {
       return;
     }
 
-    if (invitePermissionGroupId !== '') {
-      const linkedUser = await post('/permission-groups/users', {
-        body: {
-          permissionGroupId: invitePermissionGroupId,
-          userId: response.userId,
-        },
-      });
+    if (invitePermissionGroupIds.length > 0) {
+      const linkResults = await Promise.all(
+        invitePermissionGroupIds.map((permissionGroupId) =>
+          post('/permission-groups/users', {
+            body: {
+              permissionGroupId,
+              userId: response.userId,
+            },
+          }),
+        ),
+      );
 
-      if (linkedUser) {
-        toast.success('Usuário vinculado ao departamento pelo grupo de permissão.');
+      const linkedCount = linkResults.filter(Boolean).length;
+
+      if (linkedCount > 0) {
+        toast.success(
+          linkedCount === 1
+            ? 'Usuário vinculado ao grupo de permissão.'
+            : `Usuário vinculado a ${linkedCount} grupos de permissão.`,
+        );
       }
     }
 
@@ -540,43 +551,57 @@ export default function AdminUsers() {
           <>
             <div className="mx-6 mt-5 flex flex-col gap-1 rounded-2xl border border-[var(--border-neutral)] bg-[var(--bg-body)] p-4 text-sm text-[var(--text-secondary)]">
               <span>{editingUser.email}</span>
-              <strong className="text-[var(--text-primary)]">{editingUser.department}</strong>
+              <strong className="text-[var(--text-primary)]">
+                {editingUserPermissionGroups.length > 0
+                  ? editingUserPermissionGroups.map((group) => group.permissionGroupNm).join(', ')
+                  : 'Nenhum grupo de permissão vinculado'}
+              </strong>
             </div>
 
             <fieldset className={modalStyles.body}>
-              <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Departamento de acesso</legend>
+              <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Grupos de permissão</legend>
+
+              <div className="flex flex-wrap gap-2 rounded-2xl border border-[var(--border-neutral)] bg-[var(--bg-body)] p-4">
+                {editingUserPermissionGroups.length === 0 ? (
+                  <span className="text-sm text-[var(--text-secondary)]">Nenhum grupo vinculado</span>
+                ) : (
+                  editingUserPermissionGroups.map((group) => (
+                    <span
+                      key={group.permissionGroupId}
+                      className="inline-flex items-center gap-2 rounded-full border border-[var(--border-neutral)] bg-[var(--bg-elevated)] px-3 py-1 text-sm text-[var(--text-primary)]"
+                    >
+                      {group.permissionGroupNm}
+                      <button
+                        type="button"
+                        className="text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:opacity-50"
+                        onClick={() => handleRemovePermissionGroup(group.permissionGroupId)}
+                        disabled={isUpdatingGroups || loading}
+                        aria-label={`Remover ${group.permissionGroupNm}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
 
               <div className={adminStyles.formGrid}>
                 <label className={formStyles.label}>
-                  <span>Departamento</span>
+                  <span>Adicionar grupo</span>
                   <select
                     className={formStyles.select}
-                    value={selectedDepartmentId}
-                    onChange={(event) => handleDepartmentChange(event.target.value ? Number(event.target.value) : '')}
-                  >
-                    <option value="">Selecione um departamento</option>
-                    {departments.map((department) => (
-                      <option key={department.departmentId} value={department.departmentId}>
-                        {department.departmentNm}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className={formStyles.label}>
-                  <span>Grupo de permissão</span>
-                  <select
-                    className={formStyles.select}
-                    value={selectedPermissionGroupId}
-                    disabled={selectedDepartmentId === '' || availablePermissionGroups.length === 0}
-                    onChange={(event) => setSelectedPermissionGroupId(event.target.value ? Number(event.target.value) : '')}
+                    value={selectedGroupToAdd}
+                    disabled={availableGroupsToAdd.length === 0 || isUpdatingGroups}
+                    onChange={(event) =>
+                      setSelectedGroupToAdd(event.target.value ? Number(event.target.value) : '')
+                    }
                   >
                     <option value="">
-                      {selectedDepartmentId === ''
-                        ? 'Selecione um departamento'
+                      {availableGroupsToAdd.length === 0
+                        ? 'Nenhum grupo disponível'
                         : 'Selecione um grupo'}
                     </option>
-                    {availablePermissionGroups.map((group) => (
+                    {availableGroupsToAdd.map((group) => (
                       <option key={group.permissionGroupId} value={group.permissionGroupId}>
                         {group.permissionGroupNm}
                       </option>
@@ -586,23 +611,20 @@ export default function AdminUsers() {
               </div>
 
               <div className="rounded-2xl border border-[var(--border-neutral)] bg-[var(--bg-body)] p-4 text-sm leading-6 text-[var(--text-secondary)]">
-                {selectedDepartmentId !== '' && availablePermissionGroups.length === 0
-                  ? 'Nenhum grupo de permissão ativo contém este departamento. Vincule o departamento a um grupo antes de adicionar usuários.'
-                  : 'O vínculo adiciona o usuário ao grupo escolhido. Os departamentos desse grupo passam a aparecer no cadastro do usuário.'}
+                O usuário pode pertencer a mais de um grupo de permissão. Cada alteração é salva imediatamente.
               </div>
 
               <button
                 type="button"
                 className={buttonStyles.secondary}
-                onClick={handleLinkUserDepartment}
+                onClick={handleAddPermissionGroup}
                 disabled={
                   loading ||
-                  isLinkingDepartment ||
-                  selectedDepartmentId === '' ||
-                  selectedPermissionGroupId === ''
+                  isUpdatingGroups ||
+                  selectedGroupToAdd === ''
                 }
               >
-                {isLinkingDepartment ? 'Vinculando...' : 'Vincular departamento'}
+                {isUpdatingGroups ? 'Atualizando...' : 'Adicionar grupo'}
               </button>
             </fieldset>
 
@@ -732,51 +754,31 @@ export default function AdminUsers() {
         </div>
 
         <fieldset className={modalStyles.body}>
-          <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Departamento de acesso opcional</legend>
+          <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Grupos de permissão</legend>
 
-          <div className={adminStyles.formGrid}>
-            <label className={formStyles.label}>
-              <span>Departamento</span>
-              <select
-                className={formStyles.select}
-                value={inviteDepartmentId}
-                onChange={(event) => handleInviteDepartmentChange(event.target.value ? Number(event.target.value) : '')}
-              >
-                <option value="">Criar sem departamento</option>
-                {departments.map((department) => (
-                  <option key={department.departmentId} value={department.departmentId}>
-                    {department.departmentNm}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className={formStyles.label}>
-              <span>Grupo de permissão</span>
-              <select
-                className={formStyles.select}
-                value={invitePermissionGroupId}
-                disabled={inviteDepartmentId === '' || availableInvitePermissionGroups.length === 0}
-                onChange={(event) => setInvitePermissionGroupId(event.target.value ? Number(event.target.value) : '')}
-              >
-                <option value="">
-                  {inviteDepartmentId === ''
-                    ? 'Selecione um departamento'
-                    : 'Selecione um grupo'}
-                </option>
-                {availableInvitePermissionGroups.map((group) => (
-                  <option key={group.permissionGroupId} value={group.permissionGroupId}>
-                    {group.permissionGroupNm}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <div className={`${adminStyles.deleteBody} mx-0`}>
+            {activePermissionGroups.length === 0 ? (
+              <p className="text-sm text-[var(--text-secondary)]">Nenhum grupo de permissão ativo disponível.</p>
+            ) : (
+              activePermissionGroups.map((group) => (
+                <label key={group.permissionGroupId} className={modalStyles.option}>
+                  <input
+                    type="checkbox"
+                    checked={invitePermissionGroupIds.includes(group.permissionGroupId)}
+                    onChange={() =>
+                      setInvitePermissionGroupIds((current) =>
+                        toggleNumber(current, group.permissionGroupId),
+                      )
+                    }
+                  />
+                  <span>{group.permissionGroupNm}</span>
+                </label>
+              ))
+            )}
           </div>
 
           <div className="rounded-2xl border border-[var(--border-neutral)] bg-[var(--bg-body)] p-4 text-sm leading-6 text-[var(--text-secondary)]">
-            {inviteDepartmentId !== '' && availableInvitePermissionGroups.length === 0
-              ? 'Nenhum grupo de permissão ativo contém este departamento. O usuário será criado sem vínculo.'
-              : 'Se preenchido, o usuário será criado e depois adicionado ao grupo escolhido usando o endpoint de vínculo existente.'}
+            Selecione um ou mais grupos. O usuário será criado e depois adicionado a cada grupo escolhido.
           </div>
         </fieldset>
 

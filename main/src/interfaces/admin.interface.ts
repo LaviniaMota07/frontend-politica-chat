@@ -26,6 +26,12 @@ export interface BackendPermissionGroup {
   active: boolean;
 }
 
+export interface BackendPermissionGroupDetail extends BackendPermissionGroup {
+  permissionGroupUsers: {
+    user: BackendPermissionGroupUser;
+  }[];
+}
+
 export interface BackendPermissionGroupUser {
   userId: number;
   name: string;
@@ -103,6 +109,7 @@ export interface BackendDocumentVersion {
   documentPath: string;
   hash: string;
   status: DocumentProcessingStatus | null;
+  active: boolean;
   createdAt: string;
   authorName: string;
 }

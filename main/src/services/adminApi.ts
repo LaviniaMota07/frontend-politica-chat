@@ -16,6 +16,7 @@ export type {
   BackendUser,
   BackendDepartment,
   BackendPermissionGroup,
+  BackendPermissionGroupDetail,
   BackendPermissionGroupUser,
   PermissionGroupPaginationResponse,
   PermissionGroupUsersScrollingResponse,

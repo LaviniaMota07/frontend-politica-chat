@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { ArrowLeft, FileText, Link2, Plus, RefreshCcw } from 'lucide-react';
+import { ArrowLeft, FileText, Link2, Plus, RefreshCcw, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AdminModal } from '../../components/admin/AdminModal';
 import { useFetch } from '../../hooks/useFetch';
@@ -29,7 +29,7 @@ function toggleNumber(values: number[], nextValue: number) {
 export default function AdminDocumentDetail() {
   const { documentId } = useParams<{ documentId: string }>();
   const navigate = useNavigate();
-  const { get, post, put, loading } = useFetch();
+  const { get, post, put, patch, del, loading } = useFetch();
   const [document, setDocument] = useState<BackendDocumentDetail | null>(null);
   const [versions, setVersions] = useState<BackendDocumentVersion[]>([]);
   const [versionsFinished, setVersionsFinished] = useState(true);
@@ -40,6 +40,7 @@ export default function AdminDocumentDetail() {
   const [versionFile, setVersionFile] = useState<File | null>(null);
   const [versionFileError, setVersionFileError] = useState('');
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<BackendDocumentVersion | null>(null);
   const [isLoadingPage, setIsLoadingPage] = useState(true);
 
   const {
@@ -162,6 +163,44 @@ export default function AdminDocumentDetail() {
     await loadPageData();
   }
 
+  async function handleToggleActive(version: BackendDocumentVersion) {
+    const response = await patch('/documents/versions/toggle-active', {
+      body: { documentVersionId: version.documentVersionId },
+      successAlert: {
+        title: version.active ? 'Versão desativada' : 'Versão ativada',
+        message: version.active
+          ? 'A versão não será mais usada nas buscas.'
+          : 'A versão voltou a ficar disponível nas buscas.',
+      },
+    });
+
+    if (!response) return;
+
+    await loadPageData();
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+
+    const response = await del(`/documents/versions/${deleteTarget.documentVersionId}`, {
+      successAlert: {
+        title: 'Versão excluída',
+        message: `A versão ${deleteTarget.version} foi removida permanentemente.`,
+      },
+    });
+
+    if (!response) return;
+
+    setDeleteTarget(null);
+    await loadPageData();
+  }
+
+  function canDeleteVersion(version: BackendDocumentVersion) {
+    if (version.active) return false;
+    if (document?.lastVersion?.documentVersionId === version.documentVersionId) return false;
+    return true;
+  }
+
   async function handleSyncLinks(data: SyncLinksFormData) {
     await Promise.all([
       put('/documents/departments', {
@@ -258,12 +297,54 @@ export default function AdminDocumentDetail() {
                         </p>
                       </div>
                     </div>
-                    <span className="inline-flex items-center gap-2">
-                      <span className={getDocumentStatusDotClass(version.status ?? '')} aria-hidden="true" />
-                      <span className={getDocumentStatusBadgeClass(version.status ?? '')}>
-                        {formatDocumentStatus(version.status)}
-                      </span>
-                    </span>
+                    <div className="flex flex-col items-end gap-3 max-[700px]:w-full max-[700px]:items-start">
+                      <div className="flex flex-wrap justify-end gap-2 max-[700px]:justify-start">
+                        <div className="flex min-w-[150px] flex-col gap-1 rounded-2xl border px-3 py-2">
+                          <span className="text-[0.62rem] font-bold uppercase tracking-[0.14em] opacity-60">
+                            Disponibilidade
+                          </span>
+                          <span className={version.active ? adminStyles.badgeActive : adminStyles.badgeBlocked}>
+                            {version.active ? 'Ativa' : 'Desativada'}
+                          </span>
+                        </div>
+                        <div className="flex min-w-[150px] flex-col gap-1 rounded-2xl border px-3 py-2">
+                          <span className="text-[0.62rem] font-bold uppercase tracking-[0.14em] opacity-60">
+                            Processamento
+                          </span>
+                          <span className="inline-flex items-center gap-2">
+                            <span className={getDocumentStatusDotClass(version.status ?? '')} aria-hidden="true" />
+                            <span className={getDocumentStatusBadgeClass(version.status ?? '')}>
+                              {formatDocumentStatus(version.status)}
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap justify-end gap-2 max-[700px]:justify-start">
+                        <button
+                          type="button"
+                          className={adminStyles.editButton}
+                          onClick={() => void handleToggleActive(version)}
+                          disabled={loading}
+                        >
+                          {version.active ? 'Desativar versão' : 'Ativar versão'}
+                        </button>
+                        <button
+                          type="button"
+                          className={buttonStyles.iconDanger}
+                          onClick={() => setDeleteTarget(version)}
+                          disabled={loading || !canDeleteVersion(version)}
+                          title={
+                            version.active
+                              ? 'Desative a versão antes de excluí-la'
+                              : document?.lastVersion?.documentVersionId === version.documentVersionId
+                                ? 'Não é possível excluir a versão atual do documento'
+                                : 'Excluir versão'
+                          }
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
                   </article>
                 ))}
               </div>
@@ -378,6 +459,31 @@ export default function AdminDocumentDetail() {
 
         {versionErrors.fileId && (
           <p className={`${formStyles.error} px-6 pb-5`}>{versionErrors.fileId.message}</p>
+        )}
+      </AdminModal>
+
+      <AdminModal
+        open={Boolean(deleteTarget)}
+        title="Excluir versão"
+        titleId="delete-version-title"
+        description="Esta ação remove permanentemente a versão desativada."
+        onClose={() => setDeleteTarget(null)}
+        actions={(
+          <>
+            <button type="button" className={buttonStyles.secondary} onClick={() => setDeleteTarget(null)}>
+              Cancelar
+            </button>
+            <button type="button" className={buttonStyles.danger} onClick={() => void handleConfirmDelete()} disabled={loading}>
+              Excluir
+            </button>
+          </>
+        )}
+      >
+        {deleteTarget && (
+          <div className={`${modalStyles.body} ${adminStyles.deleteBody}`}>
+            Tem certeza que deseja excluir a <strong>versão {deleteTarget.version}</strong>?
+            <span>Os vetores indexados desta versão serão removidos do Pinecone. Esta ação não pode ser desfeita.</span>
+          </div>
         )}
       </AdminModal>
     </main>

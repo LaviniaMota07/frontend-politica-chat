@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { FileText, Plus, Upload } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FileText, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useFetch } from '../../hooks/useFetch';
 import {
@@ -7,45 +7,25 @@ import {
   type BackendDocumentsResponse,
   type BackendDepartment,
   type BackendSystem,
-  type UploadedDocumentResponse,
   mapBackendDepartment,
   mapBackendDocument,
   mapBackendSystem,
 } from '../../services/adminApi';
 import type { SessionDocument } from '../../interfaces/admin.interface';
 import { useCursorScroll } from '../../hooks/useCursorScroll';
-import { AdminModal } from '../../components/admin/AdminModal';
 import { AdminStatsGrid } from '../../components/admin/AdminStatsGrid';
+import { UploadDocumentModal } from '../../components/admin/UploadDocumentModal';
 import { formatDocumentStatus } from '../../utils/documentStatus';
-import { adminStyles, buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
-import { useUploadDocumentForm } from '../../hooks/forms/useUploadDocumentForm';
-import type { UploadDocumentFormData } from '../../validation/admin.schema';
-
-function toggleNumber(values: number[], nextValue: number) {
-  return values.includes(nextValue)
-    ? values.filter((value) => value !== nextValue)
-    : [...values, nextValue];
-}
+import { adminStyles, buttonStyles } from '../../utils/tailwindStyles';
 
 export default function AdminDocuments() {
   const navigate = useNavigate();
-  const { get, post, loading } = useFetch();
+  const { get } = useFetch();
   const [departments, setDepartments] = useState<Array<{ id: number; name: string; acronym: string }>>([]);
   const [systems, setSystems] = useState<Array<{ id: number; name: string; acronym: string }>>([]);
   const [documents, setDocuments] = useState<SessionDocument[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadFileError, setUploadFileError] = useState('');
-  const [uploadDepartmentIds, setUploadDepartmentIds] = useState<number[]>([]);
-  const [uploadSystemIds, setUploadSystemIds] = useState<number[]>([]);
-
-  const {
-    register: registerUpload,
-    handleSubmit: handleUploadSubmit,
-    formState: { errors: uploadErrors },
-    reset: resetUploadForm,
-  } = useUploadDocumentForm();
 
   const { fetchAll: fetchAllDepartments } = useCursorScroll<BackendDepartment>({
     endpoint: '/department/scrolling',
@@ -117,51 +97,6 @@ export default function AdminDocuments() {
       { processing: 0, error: 0, done: 0 },
     );
   }, [documents]);
-
-  function resetUploadState() {
-    resetUploadForm();
-    setUploadFile(null);
-    setUploadFileError('');
-    setUploadDepartmentIds([]);
-    setUploadSystemIds([]);
-  }
-
-  function closeUploadModal() {
-    setIsUploadModalOpen(false);
-    resetUploadState();
-  }
-
-  function handleUploadFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
-    setUploadFile(file);
-    if (file) setUploadFileError('');
-  }
-
-  async function handleUpload(data: UploadDocumentFormData) {
-    if (!uploadFile) {
-      setUploadFileError('Selecione um arquivo para enviar.');
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('file', uploadFile);
-    formData.append('title', data.title.trim());
-    uploadDepartmentIds.forEach((departmentId) => formData.append('departmentIds', String(departmentId)));
-    uploadSystemIds.forEach((systemId) => formData.append('systemIds', String(systemId)));
-
-    const response = await post('/documents/upload', {
-      formData,
-      successAlert: {
-        title: 'Documento enviado',
-        message: 'O processamento foi enfileirado no backend.',
-      },
-    }) as UploadedDocumentResponse | null;
-
-    if (!response) return;
-
-    closeUploadModal();
-    await loadPageData();
-  }
 
   return (
     <main className={adminStyles.page}>
@@ -247,67 +182,11 @@ export default function AdminDocuments() {
         </section>
       </section>
 
-      <AdminModal
+      <UploadDocumentModal
         open={isUploadModalOpen}
-        title="Novo documento"
-        titleId="new-document-title"
-        description="Cria o documento e a versão 1.0 no backend."
-        as="form"
-        onClose={closeUploadModal}
-        onSubmit={handleUploadSubmit(handleUpload)}
-        actions={(
-          <>
-            <button type="button" className={buttonStyles.secondary} onClick={closeUploadModal}>
-              Cancelar
-            </button>
-            <button type="submit" className={buttonStyles.primary} disabled={loading || !uploadFile}>
-              <Upload size={16} /> Enviar documento
-            </button>
-          </>
-        )}
-      >
-        <div className={`${modalStyles.body} ${adminStyles.formGrid}`}>
-          <label className={formStyles.label}>
-            <span>Título</span>
-            <input className={formStyles.input} type="text" {...registerUpload('title')} />
-            {uploadErrors.title && <p className={formStyles.error}>{uploadErrors.title.message}</p>}
-          </label>
-
-          <label className={formStyles.label}>
-            <span>Arquivo</span>
-            <input className={formStyles.input} type="file" onChange={handleUploadFileChange} />
-            {uploadFileError && <p className={formStyles.error}>{uploadFileError}</p>}
-          </label>
-        </div>
-
-        <div className={`${adminStyles.deleteBody} mx-6 mb-4`}>
-          <strong>Departamentos</strong>
-          {isLoadingOptions ? 'Carregando...' : departments.map((department) => (
-            <label key={department.id} className={modalStyles.option}>
-              <input
-                type="checkbox"
-                checked={uploadDepartmentIds.includes(department.id)}
-                onChange={() => setUploadDepartmentIds((current) => toggleNumber(current, department.id))}
-              />
-              <span>{department.name} ({department.acronym})</span>
-            </label>
-          ))}
-        </div>
-
-        <div className={`${adminStyles.deleteBody} mx-6 mb-4`}>
-          <strong>Sistemas</strong>
-          {isLoadingOptions ? 'Carregando...' : systems.map((system) => (
-            <label key={system.id} className={modalStyles.option}>
-              <input
-                type="checkbox"
-                checked={uploadSystemIds.includes(system.id)}
-                onChange={() => setUploadSystemIds((current) => toggleNumber(current, system.id))}
-              />
-              <span>{system.name} ({system.acronym})</span>
-            </label>
-          ))}
-        </div>
-      </AdminModal>
+        onClose={() => setIsUploadModalOpen(false)}
+        onUploaded={loadPageData}
+      />
     </main>
   );
 }
