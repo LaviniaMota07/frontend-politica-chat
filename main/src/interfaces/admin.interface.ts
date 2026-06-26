@@ -60,6 +60,8 @@ export interface BackendSystem {
 export interface BackendModelIa {
   modelIaId: number;
   modelNm: string;
+  chatModel: string;
+  tokensSpent: number | string;
   active: boolean;
 }
 

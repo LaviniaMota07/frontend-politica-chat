@@ -1,29 +1,31 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useFetch } from '../../../hooks/useFetch';
 
-interface ModelIaResponse {
+export interface ChatAiProvider {
   modelIaId: number;
   modelNm: string;
-  active: boolean;
+  chatModel: string;
 }
 
 export function useChatAiProviders(initialProvider?: number) {
-  const { get } = useFetch<ModelIaResponse[]>();
-  const [aiProviders, setAiProviders] = useState<number[]>([]);
+  const { get } = useFetch<ChatAiProvider[]>();
+  const [aiProviders, setAiProviders] = useState<ChatAiProvider[]>([]);
   const [selectedAiProvider, setSelectedAiProviderState] = useState<number | null>(initialProvider ?? null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadAiProviders() {
-      const models = await get('/model-ia');
+      const models = await get('/model-ia/opt');
 
       if (cancelled) {
         return;
       }
 
-      const providerIds = (models ?? []).map((model) => model.modelIaId);
-      setAiProviders(providerIds);
+      const providers = models ?? [];
+      const providerIds = providers.map((provider) => provider.modelIaId);
+
+      setAiProviders(providers);
       setSelectedAiProviderState((currentProvider) => {
         if (providerIds.length === 0) {
           return null;

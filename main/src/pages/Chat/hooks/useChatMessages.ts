@@ -7,14 +7,18 @@ interface UseChatMessagesParams {
   chatId: string;
   socketRef: ChatSocketRef;
   currentUserIdRef: MutableRefObject<number | null>;
+  awaitingAssistantResponse?: boolean;
 }
 
 export function useChatMessages({
   chatId,
   socketRef,
   currentUserIdRef,
+  awaitingAssistantResponse = false,
 }: UseChatMessagesParams) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => (
+    awaitingAssistantResponse ? [createAssistantPlaceholder()] : []
+  ));
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const chatIdRef = useRef(chatId);
@@ -23,10 +27,13 @@ export function useChatMessages({
     chatIdRef.current = chatId;
     queueMicrotask(() => {
       setMessages([]);
+      if (awaitingAssistantResponse) {
+        setMessages([createAssistantPlaceholder()]);
+      }
       setHasMoreMessages(true);
       setIsLoadingMore(false);
     });
-  }, [chatId]);
+  }, [awaitingAssistantResponse, chatId]);
 
   useEffect(() => {
     const socket = socketRef.current;
@@ -53,10 +60,21 @@ export function useChatMessages({
       const mapped = fetched.map(mapHistoryMessage);
 
       setMessages((prev) => {
-        if (prev.length === 0) {
-          return [...mapped].reverse();
+        const historyMessages = [...mapped].reverse();
+        const currentMessages = historyMessages.some(isRealAssistantMessage)
+          ? prev.filter((message) => message.messageId !== 'processing-placeholder')
+          : prev;
+
+        if (currentMessages.length === 0) {
+          return historyMessages;
         }
-        return [...mapped].reverse().concat(prev);
+
+        const currentIds = new Set(currentMessages.map((message) => message.messageId));
+        const uniqueHistoryMessages = historyMessages.filter(
+          (message) => !currentIds.has(message.messageId),
+        );
+
+        return uniqueHistoryMessages.concat(currentMessages);
       });
       setIsLoadingMore(false);
     }
@@ -72,7 +90,7 @@ export function useChatMessages({
           sender: 'user',
           messageText: msg.messageText,
           sendAt: msg.timestamp || new Date().toISOString(),
-          modelIaName: 'OpenIa',
+          modelIaName: msg.modelIaName || 'IA',
           userId: msg.userId,
           userName: msg.userName || null,
         },
@@ -113,6 +131,22 @@ export function useChatMessages({
   };
 }
 
+function createAssistantPlaceholder(): ChatMessage {
+  return {
+    messageId: 'processing-placeholder',
+    sender: 'assistant',
+    messageText: 'Processando resposta...',
+    sendAt: new Date().toISOString(),
+    modelIaName: 'IA',
+    userId: null,
+    userName: null,
+  };
+}
+
+function isRealAssistantMessage(message: ChatMessage) {
+  return message.sender === 'assistant' && message.messageId !== 'processing-placeholder';
+}
+
 function mapHistoryMessage(msg: ChatMessageResponse): ChatMessage {
   const isUser = msg.userId !== null && msg.userId !== undefined;
 
@@ -122,7 +156,7 @@ function mapHistoryMessage(msg: ChatMessageResponse): ChatMessage {
     messageText: msg.messageText,
     sendAt: msg.sendAt || msg.timestamp || new Date().toISOString(),
     sources: msg.sources ?? [],
-    modelIaName: msg.modelIaName || 'OpenIa',
+    modelIaName: msg.modelIaName || 'IA',
     userId: msg.userId ?? null,
     userName: msg.userName ?? null,
   };

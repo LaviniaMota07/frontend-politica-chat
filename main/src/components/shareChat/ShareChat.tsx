@@ -2,7 +2,6 @@ import { X } from 'lucide-react';
 import CardPermissionType from './components/CardPermissionType';
 import { type ReactElement, useState } from 'react';
 import SharedUsers, { type SharedUser } from './components/SharedUsers';
-import CopyLinkButton from './components/CopyLinkButton';
 import InviteByEmail from './components/InviteByEmail';
 import { useShareChatForm } from '../../hooks/forms/useShareChatForm';
 import type { ShareChatFormData } from '../../validation/chat.schema';
@@ -138,7 +137,7 @@ const ShareChat = ({ onClose }: ShareChatProps) => {
             resetSignal={inviteResetSignal}
           />
 
-          <CopyLinkButton />
+          {/* <CopyLinkButton /> */}
         </form>
 
         <SharedUsers sharedUsers={sharedUsers} setSharedUsers={setSharedUsers} />

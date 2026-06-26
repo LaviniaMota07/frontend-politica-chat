@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  CheckCircle2,
   Coins,
   Database,
   Edit3,
@@ -142,7 +143,10 @@ export default function AdminTokens() {
 
   async function handleCreateModel(data: CreateModelFormData) {
     const response = await post('/model-ia', {
-      body: { modelNm: data.modelNm.trim() },
+      body: {
+        modelNm: data.modelNm.trim(),
+        chatModel: data.chatModel.trim(),
+      },
       successAlert: {
         title: 'Modelo criado',
         message: 'O modelo de IA foi cadastrado no backend.',
@@ -159,11 +163,12 @@ export default function AdminTokens() {
     const response = await post('/model-ia-key', {
       body: {
         modelIaId: Number(data.modelIaId),
+        modelKey: data.modelKey.trim(),
         qtnToken: Number(data.qtnToken),
       },
       successAlert: {
         title: 'Chave criada',
-        message: 'A chave de IA foi gerada pelo backend.',
+        message: 'A chave de IA foi cadastrada no backend.',
       },
     }) as BackendModelIaKey | null;
 
@@ -215,6 +220,19 @@ export default function AdminTokens() {
       successAlert: {
         title: 'Modelo desativado',
         message: 'O modelo não aparecerá mais na lista ativa.',
+      },
+    });
+
+    if (response) {
+      await loadTokens();
+    }
+  }
+
+  async function handleActivateModel(model: BackendModelIa) {
+    const response = await patch(`/model-ia/${model.modelIaId}/activate`, {
+      successAlert: {
+        title: 'Modelo ativado',
+        message: 'O modelo voltou a aparecer na lista ativa.',
       },
     });
 
@@ -277,7 +295,7 @@ export default function AdminTokens() {
           </div>
 
           <AdminTable
-            columns={['Modelo', 'ID', 'Status', 'Ações']}
+            columns={['Modelo', 'Tokens gastos', 'Status', 'Ações']}
             isLoading={isLoading}
             loadingMessage="Carregando modelos..."
             isEmpty={models.length === 0}
@@ -285,13 +303,32 @@ export default function AdminTokens() {
           >
             {models.map((model) => (
               <tr key={model.modelIaId}>
-                <td className={adminStyles.td}><strong className={adminStyles.userName}>{model.modelNm}</strong></td>
-                <td className={adminStyles.td}>{model.modelIaId}</td>
-                <td className={adminStyles.td}><span className={adminStyles.badgeActive}>Ativo</span></td>
                 <td className={adminStyles.td}>
-                  <button type="button" className={buttonStyles.iconDanger} onClick={() => void handleDeleteModel(model)} title="Desativar modelo">
-                    <Trash2 size={16} />
-                  </button>
+                  <div className={adminStyles.userCell}>
+                    <strong className={adminStyles.userName}>{model.modelNm}</strong>
+                    <span className={adminStyles.userEmail}>{model.chatModel}</span>
+                  </div>
+                </td>
+                <td className={adminStyles.td}>
+                  <strong className="font-bold text-amber-700">
+                    {formatTokens(Number(model.tokensSpent ?? 0))}
+                  </strong>
+                </td>
+                <td className={adminStyles.td}>
+                  <span className={model.active ? adminStyles.badgeActive : adminStyles.badgeBlocked}>
+                    {model.active ? 'Ativo' : 'Inativo'}
+                  </span>
+                </td>
+                <td className={adminStyles.td}>
+                  {model.active ? (
+                    <button type="button" className={buttonStyles.iconDanger} onClick={() => void handleDeleteModel(model)} title="Desativar modelo">
+                      <Trash2 size={16} />
+                    </button>
+                  ) : (
+                    <button type="button" className={buttonStyles.icon} onClick={() => void handleActivateModel(model)} title="Ativar modelo">
+                      <CheckCircle2 size={16} />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -391,6 +428,15 @@ export default function AdminTokens() {
             />
             {modelErrors.modelNm && <p className={formStyles.error}>{modelErrors.modelNm.message}</p>}
           </label>
+          <label className={formStyles.label}>
+            <span>Modelo de chat</span>
+            <input
+              className={formStyles.input}
+              placeholder="Ex.: gpt-4o-mini"
+              {...registerModel('chatModel')}
+            />
+            {modelErrors.chatModel && <p className={formStyles.error}>{modelErrors.chatModel.message}</p>}
+          </label>
         </div>
       </AdminModal>
 
@@ -418,6 +464,16 @@ export default function AdminTokens() {
               ))}
             </select>
             {keyErrors.modelIaId && <p className={formStyles.error}>{keyErrors.modelIaId.message}</p>}
+          </label>
+          <label className={formStyles.label}>
+            <span>Chave de IA</span>
+            <input
+              className={formStyles.input}
+              type="password"
+              autoComplete="off"
+              {...registerKey('modelKey')}
+            />
+            {keyErrors.modelKey && <p className={formStyles.error}>{keyErrors.modelKey.message}</p>}
           </label>
           <label className={formStyles.label}>
             <span>Quantidade de tokens</span>

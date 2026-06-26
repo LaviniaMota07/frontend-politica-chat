@@ -6,7 +6,9 @@ import {
   type BackendDocument,
   type BackendDocumentsResponse,
   type BackendDepartment,
+  type BackendDocumentDetail,
   type BackendSystem,
+  type UploadedDocumentResponse,
   mapBackendDepartment,
   mapBackendDocument,
   mapBackendSystem,
@@ -26,6 +28,7 @@ export default function AdminDocuments() {
   const [documents, setDocuments] = useState<SessionDocument[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [processingDocumentIds, setProcessingDocumentIds] = useState<string[]>([]);
 
   const { fetchAll: fetchAllDepartments } = useCursorScroll<BackendDepartment>({
     endpoint: '/department/scrolling',
@@ -84,6 +87,51 @@ export default function AdminDocuments() {
       void loadPageData();
     });
   }, [loadPageData]);
+
+  useEffect(() => {
+    if (processingDocumentIds.length === 0) {
+      return undefined;
+    }
+
+    async function pollProcessingDocuments() {
+      const completedDocumentIds: string[] = [];
+
+      await Promise.all(processingDocumentIds.map(async (processingDocumentId) => {
+        const documentDetail = await get(`/documents/${processingDocumentId}`) as BackendDocumentDetail | null;
+
+        if (!isProcessingStatus(documentDetail?.lastVersion?.status)) {
+          completedDocumentIds.push(processingDocumentId);
+        }
+      }));
+
+      if (completedDocumentIds.length === 0) {
+        return;
+      }
+
+      setProcessingDocumentIds((current) => current.filter(
+        (documentId) => !completedDocumentIds.includes(documentId),
+      ));
+      await loadPageData();
+    }
+
+    const intervalId = window.setInterval(() => {
+      void pollProcessingDocuments();
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [get, loadPageData, processingDocumentIds]);
+
+  async function handleDocumentUploaded(response: UploadedDocumentResponse) {
+    if (isProcessingStatus(response.documentVersion.status)) {
+      setProcessingDocumentIds((current) => (
+        current.includes(response.document.documentId)
+          ? current
+          : [...current, response.document.documentId]
+      ));
+    }
+
+    await loadPageData();
+  }
 
   const statusTotals = useMemo(() => {
     return documents.reduce(
@@ -185,10 +233,14 @@ export default function AdminDocuments() {
       <UploadDocumentModal
         open={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
-        onUploaded={loadPageData}
+        onUploaded={handleDocumentUploaded}
       />
     </main>
   );
+}
+
+function isProcessingStatus(status?: string | null) {
+  return status === 'PROCESSING';
 }
 
 function getDocumentStatusDotClass(status: string) {

@@ -47,6 +47,7 @@ export interface NewMessageSocketPayload {
   timestamp: string;
   status: string;
   userName?: string | null;
+  modelIaName?: string | null;
 }
 
 export interface MessageResponseSocketPayload {
@@ -123,6 +124,7 @@ export interface ChatNavigationState {
   selectedDepartments?: number[];
   selectedSystems?: number[];
   selectedAiProvider?: number;
+  awaitingAssistantResponse?: boolean;
 }
 
 export interface SystemResponse {

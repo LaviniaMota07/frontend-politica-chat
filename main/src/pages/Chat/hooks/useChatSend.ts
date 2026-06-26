@@ -61,7 +61,7 @@ export function useChatSend({
       sender: 'user',
       messageText: trimmed,
       sendAt: new Date().toISOString(),
-      modelIaName: 'OpenIa',
+      modelIaName: 'IA',
       userId: user.userId || null,
       userName: user.name || null,
     };
@@ -71,7 +71,7 @@ export function useChatSend({
       sender: 'assistant',
       messageText: 'Processando resposta...',
       sendAt: new Date().toISOString(),
-      modelIaName: 'OpenIa',
+      modelIaName: 'IA',
       userId: null,
       userName: null,
     };
@@ -124,7 +124,7 @@ export function useChatSend({
           messageText: res.messageText,
           sendAt: res.timestamp || new Date().toISOString(),
           sources: res.sources ?? [],
-          modelIaName: res.modelIaName || 'OpenIa',
+          modelIaName: res.modelIaName || 'IA',
           userId: null,
           userName: null,
         };

@@ -26,16 +26,16 @@ export const modalStyles = {
   backdrop:
     'fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(31,29,25,0.52)] p-4',
   panel:
-    'w-full max-w-[520px] overflow-hidden rounded-[22px] border border-[var(--border-neutral)] border-t-[3px] border-t-[var(--accent)] bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-[0_28px_80px_rgba(31,29,25,0.24)]',
+    'w-full max-w-[520px] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[22px] border border-[var(--border-neutral)] border-t-[3px] border-t-[var(--accent)] bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-[0_28px_80px_rgba(31,29,25,0.24)]',
   formPanel:
-    'w-full max-w-[560px] overflow-hidden rounded-[22px] border border-[var(--border-neutral)] border-t-[3px] border-t-[var(--accent)] bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-[0_28px_80px_rgba(31,29,25,0.24)]',
-  header: 'flex items-start justify-between gap-5 border-b border-[var(--border-neutral)] px-6 py-5',
+    'w-full max-w-[560px] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[22px] border border-[var(--border-neutral)] border-t-[3px] border-t-[var(--accent)] bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-[0_28px_80px_rgba(31,29,25,0.24)]',
+  header: 'flex items-start justify-between gap-5 border-b border-[var(--border-neutral)] px-6 py-5 max-[640px]:px-4',
   title: 'font-[var(--heading)] text-xl font-extrabold tracking-[-0.035em] text-[var(--text-primary)]',
   description: 'mt-1 text-sm leading-6 text-[var(--text-secondary)]',
   close:
     `inline-flex size-8 items-center justify-center rounded-lg border border-transparent text-[var(--text-secondary)] transition hover:border-[var(--border-neutral)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent-strong)] ${focusRing}`,
-  body: 'flex flex-col gap-5 px-6 py-5',
-  actions: 'flex justify-end gap-3 border-t border-[var(--border-neutral)] px-6 py-5',
+  body: 'flex flex-col gap-5 px-6 py-5 max-[640px]:px-4',
+  actions: 'flex justify-end gap-3 border-t border-[var(--border-neutral)] px-6 py-5 max-[640px]:flex-col-reverse max-[640px]:px-4 [&_button]:max-[640px]:w-full',
   option:
     'flex cursor-pointer gap-3 rounded-2xl border border-[var(--border-neutral)] bg-[var(--bg-surface)] p-4 text-sm text-[var(--text-secondary)] transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--text-primary)]',
   optionText: 'flex flex-col gap-1 leading-5 [&_strong]:text-[var(--text-primary)]',

@@ -14,6 +14,9 @@ import { adminStyles, buttonStyles, formStyles, modalStyles } from '../../utils/
 import { useUploadDocumentForm } from '../../hooks/forms/useUploadDocumentForm';
 import type { UploadDocumentFormData } from '../../validation/admin.schema';
 
+const UPLOAD_MODAL_PANEL =
+  'w-full max-w-[720px] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[22px] border border-[var(--border-neutral)] border-t-[3px] border-t-[var(--accent)] bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-[0_28px_80px_rgba(31,29,25,0.24)]';
+
 function toggleNumber(values: number[], nextValue: number) {
   return values.includes(nextValue)
     ? values.filter((value) => value !== nextValue)
@@ -23,7 +26,7 @@ function toggleNumber(values: number[], nextValue: number) {
 interface UploadDocumentModalProps {
   open: boolean;
   onClose: () => void;
-  onUploaded?: () => void | Promise<void>;
+  onUploaded?: (response: UploadedDocumentResponse) => void | Promise<void>;
 }
 
 export function UploadDocumentModal({ open, onClose, onUploaded }: UploadDocumentModalProps) {
@@ -116,7 +119,7 @@ export function UploadDocumentModal({ open, onClose, onUploaded }: UploadDocumen
     if (!response) return;
 
     handleClose();
-    await onUploaded?.();
+    await onUploaded?.(response);
   }
 
   return (
@@ -128,6 +131,7 @@ export function UploadDocumentModal({ open, onClose, onUploaded }: UploadDocumen
       as="form"
       onClose={handleClose}
       onSubmit={handleUploadSubmit(handleUpload)}
+      panelClassName={UPLOAD_MODAL_PANEL}
       actions={(
         <>
           <button type="button" className={buttonStyles.secondary} onClick={handleClose}>
@@ -153,32 +157,36 @@ export function UploadDocumentModal({ open, onClose, onUploaded }: UploadDocumen
         </label>
       </div>
 
-      <div className={`${adminStyles.deleteBody} mx-6 mb-4`}>
+      <div className={`${adminStyles.deleteBody} mx-6 mb-4 max-[640px]:mx-4`}>
         <strong>Departamentos</strong>
-        {isLoadingOptions ? 'Carregando...' : departments.map((department) => (
-          <label key={department.id} className={modalStyles.option}>
-            <input
-              type="checkbox"
-              checked={uploadDepartmentIds.includes(department.id)}
-              onChange={() => setUploadDepartmentIds((current) => toggleNumber(current, department.id))}
-            />
-            <span>{department.name} ({department.acronym})</span>
-          </label>
-        ))}
+        <div className="flex max-h-56 flex-col gap-2 overflow-y-auto pr-1">
+          {isLoadingOptions ? 'Carregando...' : departments.map((department) => (
+            <label key={department.id} className={modalStyles.option}>
+              <input
+                type="checkbox"
+                checked={uploadDepartmentIds.includes(department.id)}
+                onChange={() => setUploadDepartmentIds((current) => toggleNumber(current, department.id))}
+              />
+              <span>{department.name} ({department.acronym})</span>
+            </label>
+          ))}
+        </div>
       </div>
 
-      <div className={`${adminStyles.deleteBody} mx-6 mb-4`}>
+      <div className={`${adminStyles.deleteBody} mx-6 mb-4 max-[640px]:mx-4`}>
         <strong>Sistemas</strong>
-        {isLoadingOptions ? 'Carregando...' : systems.map((system) => (
-          <label key={system.id} className={modalStyles.option}>
-            <input
-              type="checkbox"
-              checked={uploadSystemIds.includes(system.id)}
-              onChange={() => setUploadSystemIds((current) => toggleNumber(current, system.id))}
-            />
-            <span>{system.name} ({system.acronym})</span>
-          </label>
-        ))}
+        <div className="flex max-h-56 flex-col gap-2 overflow-y-auto pr-1">
+          {isLoadingOptions ? 'Carregando...' : systems.map((system) => (
+            <label key={system.id} className={modalStyles.option}>
+              <input
+                type="checkbox"
+                checked={uploadSystemIds.includes(system.id)}
+                onChange={() => setUploadSystemIds((current) => toggleNumber(current, system.id))}
+              />
+              <span>{system.name} ({system.acronym})</span>
+            </label>
+          ))}
+        </div>
       </div>
     </AdminModal>
   );

@@ -17,6 +17,10 @@ export const createModelSchema = z.object({
     .string()
     .min(2, 'Nome deve ter pelo menos 2 caracteres')
     .max(100, 'Nome deve ter no máximo 100 caracteres'),
+  chatModel: z
+    .string()
+    .min(2, 'Modelo de chat deve ter pelo menos 2 caracteres')
+    .max(100, 'Modelo de chat deve ter no máximo 100 caracteres'),
 });
 
 export type CreateModelFormData = z.infer<typeof createModelSchema>;
@@ -25,6 +29,9 @@ export const createKeySchema = z.object({
   modelIaId: z
     .string()
     .min(1, 'Selecione um modelo'),
+  modelKey: z
+    .string()
+    .min(1, 'Chave de IA é obrigatória'),
   qtnToken: z
     .string()
     .min(1, 'Quantidade de tokens é obrigatória')

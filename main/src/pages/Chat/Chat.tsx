@@ -49,6 +49,7 @@ export default function Chat() {
       const navigationState: ChatNavigationState = {
         selectedDepartments,
         selectedSystems,
+        awaitingAssistantResponse: true,
       };
 
       if (selectedAiProvider) {

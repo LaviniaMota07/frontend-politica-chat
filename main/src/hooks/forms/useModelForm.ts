@@ -9,6 +9,7 @@ export function useModelForm() {
     resolver: zodResolver(createModelSchema),
     defaultValues: {
       modelNm: '',
+      chatModel: '',
     },
   });
 }

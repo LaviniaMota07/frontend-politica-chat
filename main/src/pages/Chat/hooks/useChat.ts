@@ -10,6 +10,7 @@ export function useChat(
   modelIaId: number,
   selectedDepartments: number[] = [],
   selectedSystems: number[] = [],
+  awaitingAssistantResponse = false,
 ) {
   const { user } = useAuth();
   const userId = user?.userId ?? null;
@@ -31,7 +32,12 @@ export function useChat(
     loadMoreMessages,
     hasMoreMessages,
     isLoadingMore,
-  } = useChatMessages({ chatId, socketRef, currentUserIdRef });
+  } = useChatMessages({
+    chatId,
+    socketRef,
+    currentUserIdRef,
+    awaitingAssistantResponse,
+  });
   const {
     inputValue,
     setInputValue,

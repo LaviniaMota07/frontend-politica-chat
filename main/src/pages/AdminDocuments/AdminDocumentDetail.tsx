@@ -40,8 +40,8 @@ export default function AdminDocumentDetail() {
   const [versionFile, setVersionFile] = useState<File | null>(null);
   const [versionFileError, setVersionFileError] = useState('');
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<BackendDocumentVersion | null>(null);
   const [isLoadingPage, setIsLoadingPage] = useState(true);
+  const [processingVersionIds, setProcessingVersionIds] = useState<string[]>([]);
 
   const {
     register: registerVersion,
@@ -116,6 +116,38 @@ export default function AdminDocumentDetail() {
     });
   }, [loadPageData]);
 
+  useEffect(() => {
+    if (!documentId || processingVersionIds.length === 0) {
+      return undefined;
+    }
+
+    async function pollProcessingVersions() {
+      const response = await get(`/documents/${documentId}/versions?limit=100`) as BackendDocumentVersionsResponse | null;
+      const versionsById = new Map(
+        (response?.data ?? []).map((version) => [version.documentVersionId, version]),
+      );
+      const completedVersionIds = processingVersionIds.filter((documentVersionId) => {
+        const version = versionsById.get(documentVersionId);
+        return version ? !isProcessingStatus(version.status) : false;
+      });
+
+      if (completedVersionIds.length === 0) {
+        return;
+      }
+
+      setProcessingVersionIds((current) => current.filter(
+        (documentVersionId) => !completedVersionIds.includes(documentVersionId),
+      ));
+      await loadPageData();
+    }
+
+    const intervalId = window.setInterval(() => {
+      void pollProcessingVersions();
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [documentId, get, loadPageData, processingVersionIds]);
+
   const linkedDepartments = useMemo(
     () => departments.filter((department) => selectedDepartmentIds.includes(department.id)),
     [departments, selectedDepartmentIds],
@@ -159,6 +191,14 @@ export default function AdminDocumentDetail() {
 
     if (!response) return;
 
+    if (isProcessingStatus(response.status)) {
+      setProcessingVersionIds((current) => (
+        current.includes(response.documentVersionId)
+          ? current
+          : [...current, response.documentVersionId]
+      ));
+    }
+
     closeVersionModal();
     await loadPageData();
   }
@@ -179,20 +219,22 @@ export default function AdminDocumentDetail() {
     await loadPageData();
   }
 
-  async function handleConfirmDelete() {
-    if (!deleteTarget) return;
-
-    const response = await del(`/documents/versions/${deleteTarget.documentVersionId}`, {
+  async function handleDeleteVersion(version: BackendDocumentVersion) {
+    const response = await del(`/documents/versions/${version.documentVersionId}`, {
       successAlert: {
         title: 'Versão excluída',
-        message: `A versão ${deleteTarget.version} foi removida permanentemente.`,
+        message: `A versão ${version.version} foi removida permanentemente.`,
       },
     });
 
     if (!response) return;
 
-    setDeleteTarget(null);
-    await loadPageData();
+    setVersions((current) => current.filter(
+      (item) => item.documentVersionId !== version.documentVersionId,
+    ));
+    setProcessingVersionIds((current) => current.filter(
+      (documentVersionId) => documentVersionId !== version.documentVersionId,
+    ));
   }
 
   function canDeleteVersion(version: BackendDocumentVersion) {
@@ -328,21 +370,23 @@ export default function AdminDocumentDetail() {
                         >
                           {version.active ? 'Desativar versão' : 'Ativar versão'}
                         </button>
-                        <button
+                        {!version.active && 
+                          <button
                           type="button"
                           className={buttonStyles.iconDanger}
-                          onClick={() => setDeleteTarget(version)}
+                          onClick={() => void handleDeleteVersion(version)}
                           disabled={loading || !canDeleteVersion(version)}
                           title={
                             version.active
-                              ? 'Desative a versão antes de excluí-la'
-                              : document?.lastVersion?.documentVersionId === version.documentVersionId
-                                ? 'Não é possível excluir a versão atual do documento'
-                                : 'Excluir versão'
+                            ? 'Desative a versão antes de excluí-la'
+                            : document?.lastVersion?.documentVersionId === version.documentVersionId
+                            ? 'Não é possível excluir a versão atual do documento'
+                            : 'Excluir versão'
                           }
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        }
                       </div>
                     </div>
                   </article>
@@ -462,30 +506,6 @@ export default function AdminDocumentDetail() {
         )}
       </AdminModal>
 
-      <AdminModal
-        open={Boolean(deleteTarget)}
-        title="Excluir versão"
-        titleId="delete-version-title"
-        description="Esta ação remove permanentemente a versão desativada."
-        onClose={() => setDeleteTarget(null)}
-        actions={(
-          <>
-            <button type="button" className={buttonStyles.secondary} onClick={() => setDeleteTarget(null)}>
-              Cancelar
-            </button>
-            <button type="button" className={buttonStyles.danger} onClick={() => void handleConfirmDelete()} disabled={loading}>
-              Excluir
-            </button>
-          </>
-        )}
-      >
-        {deleteTarget && (
-          <div className={`${modalStyles.body} ${adminStyles.deleteBody}`}>
-            Tem certeza que deseja excluir a <strong>versão {deleteTarget.version}</strong>?
-            <span>Os vetores indexados desta versão serão removidos do Pinecone. Esta ação não pode ser desfeita.</span>
-          </div>
-        )}
-      </AdminModal>
     </main>
   );
 }
@@ -541,6 +561,10 @@ function getDocumentStatusDotClass(status: string) {
   }
 
   return adminStyles.statusDotSynced;
+}
+
+function isProcessingStatus(status?: string | null) {
+  return status === 'PROCESSING';
 }
 
 function getDocumentStatusBadgeClass(status: string) {

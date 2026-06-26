@@ -3,7 +3,8 @@ import { io, type Socket } from 'socket.io-client';
 import { notifyUnauthorizedSession } from '../../../utils/authSession';
 import type { ClientToServerChatEvents, ServerToClientChatEvents } from '../types/chat.types';
 
-const SOCKET_URL = (import.meta.env.VITE_URL_API || 'http://localhost:8080') + '/chat';
+const SOCKET_NAMESPACE = '/chat';
+const SOCKET_PATH = '/api/socket.io';
 
 export type ChatSocket = Socket<ServerToClientChatEvents, ClientToServerChatEvents>;
 export type ChatSocketRef = MutableRefObject<ChatSocket | null>;
@@ -35,7 +36,8 @@ export function useSocketConnection({
     isConnectingRef.current = true;
     let cancelled = false;
 
-    const socket: ChatSocket = io(SOCKET_URL, {
+    const socket: ChatSocket = io(SOCKET_NAMESPACE, {
+      path: SOCKET_PATH,
       transports: ['websocket'],
       withCredentials: true,
     });

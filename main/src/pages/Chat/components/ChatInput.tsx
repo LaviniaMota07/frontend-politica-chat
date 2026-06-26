@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import FilterChat, { type FilterItem } from '../../../components/filterChat/FilterChat';
 import { chatStyles } from '../../../utils/tailwindStyles';
+import type { ChatAiProvider } from '../hooks/useChatAiProviders';
 
 type FetchFilterItems = (lastItemId?: number) => Promise<{ data: FilterItem[]; finish: boolean }>;
 
@@ -21,7 +22,7 @@ interface ChatInputProps {
   onSystemsChange: (systems: number[]) => void;
   fetchSystems: FetchFilterItems;
   selectedAiProvider: number | null;
-  aiProviders: number[];
+  aiProviders: ChatAiProvider[];
   onAiProviderChange: (provider: number) => void;
 }
 
@@ -47,6 +48,9 @@ export function ChatInput({
   const sourcesLabel = sourcesCount > 0
     ? `${sourcesCount} fonte${sourcesCount > 1 ? 's' : ''}`
     : 'Fontes aguardando backend';
+  const selectedProvider = aiProviders.find((provider) => provider.modelIaId === selectedAiProvider);
+  const selectedProviderLabel = selectedProvider?.modelNm ?? '-';
+  const selectedProviderDescription = selectedProvider?.chatModel ?? 'nenhuma';
 
   const shellRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -125,23 +129,28 @@ export function ChatInput({
           <details className={chatStyles.filterMenu}>
             <summary
               className={chatStyles.filterSummary}
-              title={`IA: ${selectedAiProvider ?? 'nenhuma'}`}
-              aria-label={`Escolher IA para responder. Seleção atual: ${selectedAiProvider ?? 'nenhuma'}`}
+              title={`IA: ${selectedProviderDescription}`}
+              aria-label={`Escolher IA para responder. Seleção atual: ${selectedProviderLabel}`}
             >
               <Bot size={15} />
-              <span>{selectedAiProvider ?? '-'}</span>
+              <span>{selectedProviderLabel}</span>
             </summary>
 
             <div className={chatStyles.filterOptions}>
               {aiProviders.map((provider) => (
-                <label className={chatStyles.filterOption} key={provider}>
+                <label
+                  className={chatStyles.filterOption}
+                  key={provider.modelIaId}
+                  title={provider.chatModel}
+                >
                   <input
                     type="radio"
                     name="chat-ai-provider"
-                    checked={selectedAiProvider === provider}
-                    onChange={() => onAiProviderChange(provider)}
+                    value={provider.modelIaId}
+                    checked={selectedAiProvider === provider.modelIaId}
+                    onChange={() => onAiProviderChange(provider.modelIaId)}
                   />
-                  <span>{provider}</span>
+                  <span>{provider.modelNm}</span>
                 </label>
               ))}
             </div>

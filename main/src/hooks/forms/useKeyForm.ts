@@ -14,6 +14,7 @@ export function useCreateKeyForm(defaultModelId?: string) {
     resolver: zodResolver(createKeySchema),
     defaultValues: {
       modelIaId: defaultModelId ?? '',
+      modelKey: '',
       qtnToken: '',
     },
   });

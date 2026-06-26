@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { notifyUnauthorizedSession } from '../utils/authSession';
 
-const BASE_URL = import.meta.env.VITE_URL_API || 'http://localhost:8080';
+const BASE_URL = import.meta.env.VITE_URL_API || '/api';
 
 // ─── Tipos ────────────────────────────────────────────────────────────
 
@@ -82,7 +82,7 @@ export function useFetch<T = unknown>(): UseFetchReturn<T> {
                         if (errorBody?.message) {
                             errorMessage = typeof errorBody.message === 'string'
                                 ? errorBody.message
-                                : JSON.stringify(errorBody.message);
+                                : errorBody.message.message;
                         }
                     } catch {
                         // resposta não é JSON, usa a mensagem padrão

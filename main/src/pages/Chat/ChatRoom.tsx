@@ -40,7 +40,13 @@ export default function ChatRoom() {
     loadMoreMessages,
     hasMoreMessages,
     isLoadingMore,
-  } = useChat(chatId ?? '', selectedAiProvider ?? 0, selectedDepartments, selectedSystems);
+  } = useChat(
+    chatId ?? '',
+    selectedAiProvider ?? 0,
+    selectedDepartments,
+    selectedSystems,
+    navigationState.awaitingAssistantResponse ?? false,
+  );
 
   if (!chatId) {
     return <Navigate to="/chat" replace />;
@@ -132,6 +138,7 @@ function getChatNavigationState(state: unknown): ChatNavigationState {
     selectedAiProvider: typeof candidate.selectedAiProvider === 'number'
       ? candidate.selectedAiProvider
       : undefined,
+    awaitingAssistantResponse: candidate.awaitingAssistantResponse === true,
   };
 }
 
