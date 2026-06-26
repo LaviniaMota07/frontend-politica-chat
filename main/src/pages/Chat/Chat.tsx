@@ -1,53 +1,58 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFetch } from '../../hooks/useFetch';
 import '../../styles/Chat.css';
 import { ChatHeader } from './components/ChatHeader';
 import { ChatInput } from './components/ChatInput';
-import { ChatMessages } from './components/ChatMessages';
 import { ChatWelcome } from './components/ChatWelcome';
-import { useChat } from './hooks/useChat';
 import { aiProviders, chatDepartments, chatSystems } from './mocks/chat.mock';
-import type { AiProvider } from './types/chat.types';
 
 export default function Chat() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { post, loading } = useFetch<string>();
+
+  const [inputValue, setInputValue] = useState('');
   const [selectedDepartments, setSelectedDepartments] = useState([chatDepartments[0]]);
   const [selectedSystems, setSelectedSystems] = useState([chatSystems[0]]);
-  const [selectedAiProvider, setSelectedAiProvider] = useState<AiProvider>(aiProviders[0]);
-  const {
-    messages,
-    inputValue,
-    setInputValue,
-    handleSendMessage,
-    isSending,
-  } = useChat(selectedDepartments, selectedSystems, selectedAiProvider);
+  const [selectedAiProvider, setSelectedAiProvider] = useState<number>(1);
 
-  const hasMessages = messages.length > 0;
-  const isAdmin = user.role === '2';
-  const latestAssistantMessage = [...messages]
-    .reverse()
-    .find((message) => message.sender === 'assistant');
-  const sourcesCount = latestAssistantMessage?.sources?.length ?? 0;
+  const isAdmin = user.userTypeId === '2';
+
+  async function handleSendMessage() {
+    const trimmed = inputValue.trim();
+    if (!trimmed || loading) return;
+
+    const chatId = await post('/message', {
+      body: {
+        messageText: trimmed,
+        modelIaId: selectedAiProvider,
+        selectedDepartments,
+        selectedSystems,
+      },
+    });
+
+    if (chatId) {
+      navigate(`/chat/${chatId}`);
+    }
+  }
 
   return (
     <main className={`chat-page ${isAdmin ? 'admin' : 'user'}`}>
       <section className="chat-main">
-        <ChatHeader />
+        <ChatHeader isConnected={false} />
 
         <div className="chat-content">
-          {hasMessages ? (
-            <ChatMessages messages={messages} />
-          ) : (
-            <ChatWelcome />
-          )}
+          <ChatWelcome />
         </div>
 
         <ChatInput
           value={inputValue}
           onChange={setInputValue}
           onSend={handleSendMessage}
-          isSending={isSending}
-          sourcesCount={sourcesCount}
+          isSending={loading}
+          sourcesCount={0}
           selectedDepartments={selectedDepartments}
           departments={chatDepartments}
           onDepartmentsChange={setSelectedDepartments}

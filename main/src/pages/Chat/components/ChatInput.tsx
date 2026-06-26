@@ -1,7 +1,9 @@
-import { ArrowRight, Bot, Building2, MonitorCog } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowRight, Bot } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
-import type { AiProvider } from '../types/chat.types';
+import type { DepartmentResponse, SystemResponse } from '../types/chat.types';
+import FilterChat, { type FilterItem } from '../../../components/filterChat/Index';
+import { useFetch } from '../../../hooks/useFetch';
 
 interface ChatInputProps {
   value: string;
@@ -15,9 +17,9 @@ interface ChatInputProps {
   selectedSystems?: string[];
   systems: string[];
   onSystemsChange: (systems: string[]) => void;
-  selectedAiProvider: AiProvider;
-  aiProviders: AiProvider[];
-  onAiProviderChange: (provider: AiProvider) => void;
+  selectedAiProvider: number;
+  aiProviders: number[];
+  onAiProviderChange: (provider: number) => void;
 }
 
 export function ChatInput({
@@ -36,21 +38,12 @@ export function ChatInput({
   aiProviders,
   onAiProviderChange,
 }: ChatInputProps) {
+
+  const { get } = useFetch();
+
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const [departmentSearch, setDepartmentSearch] = useState('');
   const [systemSearch, setSystemSearch] = useState('');
-  const departmentSummary = getSelectionSummary(selectedDepartments, departments[0]);
-  const systemSummary = getSelectionSummary(selectedSystems, systems[0]);
-  const departmentCount = getActiveSelectionCount(selectedDepartments, departments[0]);
-  const systemCount = getActiveSelectionCount(selectedSystems, systems[0]);
-  const filteredDepartments = useMemo(
-    () => filterOptions(departments, departmentSearch, departments[0]),
-    [departmentSearch, departments]
-  );
-  const filteredSystems = useMemo(
-    () => filterOptions(systems, systemSearch, systems[0]),
-    [systemSearch, systems]
-  );
 
   useEffect(() => {
     const input = inputRef.current;
@@ -70,93 +63,79 @@ export function ChatInput({
     }
   }
 
-  function handleDepartmentChange(department: string) {
-    onDepartmentsChange(getNextSelection(selectedDepartments, department, departments[0]));
+  async function handleGetDepartment(lastIdDepartment?: number): Promise<{ data: FilterItem[], finish: boolean }> {
+
+    let url = `/department/scrolling`
+
+    if (lastIdDepartment) {
+      url += `?departmentId=${lastIdDepartment}`
+    }
+
+    const response = await get(url) as { data: DepartmentResponse[], finish: boolean } | null
+    if (response) {
+      const data = response.data.map((department: DepartmentResponse): FilterItem => {
+        return {
+          itemId: department.departmentId,
+          itemNm: department.departmentNm
+        }
+      })
+      return { data, finish: response.finish }
+    }
+
+    return { data: [], finish: true }
+
   }
 
-  function handleSystemChange(system: string) {
-    onSystemsChange(getNextSelection(selectedSystems, system, systems[0]));
+  async function handleGetSystem(lastIdSystem?: number): Promise<{ data: FilterItem[], finish: boolean }> {
+
+    let url = `/systems/scrolling`
+
+    if (lastIdSystem) {
+      url += `?systemId=${lastIdSystem}`
+    }
+
+    const response = await get(url) as { data: SystemResponse[], finish: boolean } | null
+
+    if (response) {
+      const data = response.data.map((department: SystemResponse): FilterItem => {
+        return {
+          itemId: department.systemId,
+          itemNm: department.systemNm
+        }
+      })
+      return { data, finish: response.finish }
+    }
+
+    return { data: [], finish: true }
+
   }
 
   return (
     <div className="chat-input-shell">
       <div className="chat-input-wrapper">
         <div className="chat-filter-strip" aria-label="Filtros da conversa">
-          <details className="chat-filter-menu">
-            <summary
-              className="chat-department-filter"
-              title={`Departamentos: ${departmentSummary}`}
-              aria-label={`Filtrar por departamento. Seleção atual: ${departmentSummary}`}
-            >
-              <Building2 size={15} />
-              <span>Deptos</span>
-              {departmentCount > 0 && <strong>{departmentCount}</strong>}
-            </summary>
 
-            <div className="chat-filter-options">
-              <input
-                className="chat-filter-search"
-                type="search"
-                value={departmentSearch}
-                onChange={(event) => setDepartmentSearch(event.target.value)}
-                placeholder="Buscar departamento"
-                aria-label="Buscar departamento"
-              />
+          <FilterChat
+            title="Departamentos"
+            icon="building"
+            searchValue={departmentSearch}
+            onSearchChange={setDepartmentSearch}
+            selectedItems={selectedDepartments}
+            onItemsChange={onDepartmentsChange}
+            fetchItems={handleGetDepartment}
+            allOptionLabel={departments[0]}
+          />
 
-              {filteredDepartments.map((department) => (
-                <label className="chat-filter-option" key={department}>
-                  <input
-                    type="checkbox"
-                    checked={selectedDepartments.includes(department)}
-                    onChange={() => handleDepartmentChange(department)}
-                  />
-                  <span>{department}</span>
-                </label>
-              ))}
-
-              {filteredDepartments.length === 0 && (
-                <span className="chat-filter-empty">Nenhum departamento encontrado</span>
-              )}
-            </div>
-          </details>
-
-          <details className="chat-filter-menu">
-            <summary
-              className="chat-department-filter"
-              title={`Sistemas: ${systemSummary}`}
-              aria-label={`Filtrar por sistema. Seleção atual: ${systemSummary}`}
-            >
-              <MonitorCog size={15} />
-              <span>Sistemas</span>
-              {systemCount > 0 && <strong>{systemCount}</strong>}
-            </summary>
-
-            <div className="chat-filter-options">
-              <input
-                className="chat-filter-search"
-                type="search"
-                value={systemSearch}
-                onChange={(event) => setSystemSearch(event.target.value)}
-                placeholder="Buscar sistema"
-                aria-label="Buscar sistema"
-              />
-
-              {filteredSystems.map((system) => (
-                <label className="chat-filter-option" key={system}>
-                  <input
-                    type="checkbox"
-                    checked={selectedSystems.includes(system)}
-                    onChange={() => handleSystemChange(system)}
-                  />
-                  <span>{system}</span>
-                </label>
-              ))}
-
-              {filteredSystems.length === 0 && (
-                <span className="chat-filter-empty">Nenhum sistema encontrado</span>
-              )}
-            </div>
-          </details>
+          <FilterChat
+            title="Sistemas"
+            icon="monitor"
+            searchValue={systemSearch}
+            onSearchChange={setSystemSearch}
+            selectedItems={selectedSystems}
+            onItemsChange={onSystemsChange}
+            fetchItems={handleGetSystem}
+            allOptionLabel={systems[0]}
+          />
 
           <details className="chat-filter-menu">
             <summary
@@ -209,48 +188,5 @@ export function ChatInput({
         </div>
       </div>
     </div>
-  );
-}
-
-function getNextSelection(currentSelection: string[], selectedOption: string, allOption: string) {
-  if (selectedOption === allOption) {
-    return [allOption];
-  }
-
-  const withoutAllOption = currentSelection.filter((option) => option !== allOption);
-  const nextSelection = withoutAllOption.includes(selectedOption)
-    ? withoutAllOption.filter((option) => option !== selectedOption)
-    : [...withoutAllOption, selectedOption];
-
-  return nextSelection.length > 0 ? nextSelection : [allOption];
-}
-
-function getSelectionSummary(selection: string[], allOption: string) {
-  const selectedItems = selection.filter((option) => option !== allOption);
-
-  if (selectedItems.length === 0) {
-    return allOption;
-  }
-
-  if (selectedItems.length <= 2) {
-    return selectedItems.join(', ');
-  }
-
-  return `${selectedItems.length} selecionados`;
-}
-
-function getActiveSelectionCount(selection: string[], allOption: string) {
-  return selection.filter((option) => option !== allOption).length;
-}
-
-function filterOptions(options: string[], search: string, allOption: string) {
-  const normalizedSearch = search.trim().toLowerCase();
-
-  if (!normalizedSearch) {
-    return options;
-  }
-
-  return options.filter(
-    (option) => option === allOption || option.toLowerCase().includes(normalizedSearch)
   );
 }

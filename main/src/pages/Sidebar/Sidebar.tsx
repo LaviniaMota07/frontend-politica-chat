@@ -1,17 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  ChevronDown,
-  ChevronRight,
   FileText,
   Grid2X2,
   KeyRound,
   Layers3,
-  MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
-  Share2,
   ShieldCheck,
   Upload,
   UserCog,
@@ -19,66 +15,10 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/sidebar.css';
+import { useFetch } from '../../hooks/useFetch';
+import ChatMenu from './components/chat/Chat';
+import type { Chat } from '../../types/chat';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface SharedConversation {
-  id: string;
-  title: string;
-  owner: string;
-  updatedAt: string;
-}
-
-interface Department {
-  id: string;
-  name: string;
-}
-
-interface System {
-  id: string;
-  name: string;
-}
-
-interface PolicyFormData {
-  file: File | null;
-  departmentIds: string[];
-  systemIds: string[];
-}
-
-// ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
-
-const conversationHistory: string[] = [
-  'Política de reembolso de vi...',
-  'Solicitação de férias 2024',
-  'Uso de VPN fora do país',
-];
-
-const sharedConversationHistory: SharedConversation[] = [
-  { id: 'shared-beneficios', title: 'Benefícios e plano de saúde', owner: 'Ana Souza', updatedAt: 'Hoje' },
-  { id: 'shared-home-office', title: 'Regras de home office', owner: 'Carlos Oliveira', updatedAt: 'Ontem' },
-  { id: 'shared-conduta', title: 'Código de conduta interno', owner: 'Marina Lima', updatedAt: '12/05' },
-];
-
-// Mock: replace with real API calls in production
-const availableDepartments: Department[] = [
-  { id: 'dep-1', name: 'Recursos Humanos' },
-  { id: 'dep-2', name: 'Tecnologia da Informação' },
-  { id: 'dep-3', name: 'Jurídico' },
-  { id: 'dep-4', name: 'Financeiro' },
-  { id: 'dep-5', name: 'Operações' },
-];
-
-const availableSystems: System[] = [
-  { id: 'sys-1', name: 'ERP Corporativo' },
-  { id: 'sys-2', name: 'Portal do Colaborador' },
-  { id: 'sys-3', name: 'Sistema de RH' },
-  { id: 'sys-4', name: 'Helpdesk' },
-  { id: 'sys-5', name: 'Intranet' },
-];
 
 // ---------------------------------------------------------------------------
 // AddPolicyModal
@@ -86,10 +26,10 @@ const availableSystems: System[] = [
 
 interface AddPolicyModalProps {
   onClose: () => void;
-  onSubmit: (data: PolicyFormData) => void;
+  // onSubmit: (data: PolicyFormData) => void;
 }
 
-function AddPolicyModal({ onClose, onSubmit }: AddPolicyModalProps) {
+function AddPolicyModal({ onClose }: AddPolicyModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [selectedSystems, setSelectedSystems] = useState<string[]>([]);
@@ -133,7 +73,7 @@ function AddPolicyModal({ onClose, onSubmit }: AddPolicyModalProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onSubmit({ file, departmentIds: selectedDepartments, systemIds: selectedSystems });
+    // onSubmit({ file, departmentIds: selectedDepartments, systemIds: selectedSystems });
     onClose();
   }
 
@@ -202,7 +142,7 @@ function AddPolicyModal({ onClose, onSubmit }: AddPolicyModalProps) {
           <div className="apm-section">
             <p className="apm-label">Departamentos responsáveis</p>
             <div className="apm-chip-group" role="group" aria-label="Selecionar departamentos">
-              {availableDepartments.map((dep) => (
+              {/* {availableDepartments.map((dep) => (
                 <button
                   key={dep.id}
                   type="button"
@@ -212,7 +152,7 @@ function AddPolicyModal({ onClose, onSubmit }: AddPolicyModalProps) {
                 >
                   {dep.name}
                 </button>
-              ))}
+              ))} */}
             </div>
           </div>
 
@@ -220,7 +160,7 @@ function AddPolicyModal({ onClose, onSubmit }: AddPolicyModalProps) {
           <div className="apm-section">
             <p className="apm-label">Sistemas integrados</p>
             <div className="apm-chip-group" role="group" aria-label="Selecionar sistemas">
-              {availableSystems.map((sys) => (
+              {/* {availableSystems.map((sys) => (
                 <button
                   key={sys.id}
                   type="button"
@@ -230,7 +170,7 @@ function AddPolicyModal({ onClose, onSubmit }: AddPolicyModalProps) {
                 >
                   {sys.name}
                 </button>
-              ))}
+              ))} */}
             </div>
           </div>
 
@@ -539,33 +479,32 @@ export default function Sidebar() {
   const isAdmin = user.role === '2';
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [isConversationHistoryOpen, setIsConversationHistoryOpen] = useState(false);
-  const [isSharedHistoryOpen, setIsSharedHistoryOpen] = useState(false);
-  const [conversationSearch, setConversationSearch] = useState('');
-  const [sharedSearch, setSharedSearch] = useState('');
+  const { get } = useFetch()  
+  async function handleGetMyChats (lastChatId?:string) {
 
-  // ── Modal state ──────────────────────────────────────────────────────────
-  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+    let url = `/chat/scrolling`
 
-  // ── MODIFICADO: dispara evento customizado para o DocumentManagement ─────
-  function handlePolicySubmit(data: PolicyFormData) {
-    window.dispatchEvent(new CustomEvent('policy:added', { detail: data }));
+    if(lastChatId) {
+      url+=`?lastChatId=${lastChatId}`
+    }
+
+    const response: {data:Chat[],finished:boolean} = await get(url) as {data:Chat[],finished:boolean}
+
+    return response
   }
-  // ────────────────────────────────────────────────────────────────────────
 
-  const filteredConversationHistory = useMemo(() => {
-    const search = conversationSearch.trim().toLowerCase();
-    if (!search) return conversationHistory;
-    return conversationHistory.filter((item) => item.toLowerCase().includes(search));
-  }, [conversationSearch]);
+  async function handleGetSharedChats (lastChatId?:string) {
 
-  const filteredSharedConversationHistory = useMemo(() => {
-    const search = sharedSearch.trim().toLowerCase();
-    if (!search) return sharedConversationHistory;
-    return sharedConversationHistory.filter((item) =>
-      `${item.title} ${item.owner} ${item.updatedAt}`.toLowerCase().includes(search)
-    );
-  }, [sharedSearch]);
+    let url = `/chat/shared-scrolling`
+
+    if(lastChatId) {
+      url+=`?lastChatId=${lastChatId}`
+    }
+
+    const response: {data:Chat[],finished:boolean} = await get(url) as {data:Chat[],finished:boolean}
+
+    return response
+  }
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 900px)');
@@ -628,7 +567,7 @@ export default function Sidebar() {
               <button
                 type="button"
                 className="sidebar-add-source"
-                onClick={() => setIsPolicyModalOpen(true)}
+                // onClick={() => setIsPolicyModalOpen(true)}
               >
                 <span aria-hidden="true">+</span>
                 Adicionar políticas/normas
@@ -669,99 +608,9 @@ export default function Sidebar() {
             </section>
           )}
 
-          <section className="sidebar-history" aria-label="Histórico de conversas">
-            <button
-              type="button"
-              className="sidebar-history-toggle"
-              onClick={() => setIsConversationHistoryOpen((current) => !current)}
-              aria-expanded={isConversationHistoryOpen}
-            >
-              <span>Histórico de Conversas</span>
-              {isConversationHistoryOpen ? (
-                <ChevronDown size={16} strokeWidth={1.8} />
-              ) : (
-                <ChevronRight size={16} strokeWidth={1.8} />
-              )}
-            </button>
+          <ChatMenu handleGetChat={handleGetMyChats} />
 
-            {isConversationHistoryOpen && (
-              <>
-                <label className="sidebar-history-search">
-                  <input
-                    type="search"
-                    placeholder="Buscar conversa"
-                    value={conversationSearch}
-                    onChange={(event) => setConversationSearch(event.target.value)}
-                  />
-                </label>
-
-                <nav className="sidebar-history-list">
-                  {filteredConversationHistory.map((item) => (
-                    <NavLink to="/chat" className="sidebar-history-link" key={item}>
-                      <MessageSquare size={17} strokeWidth={1.8} />
-                      <span>{item}</span>
-                    </NavLink>
-                  ))}
-                </nav>
-
-                {filteredConversationHistory.length === 0 && (
-                  <p className="sidebar-history-empty">Nenhuma conversa encontrada.</p>
-                )}
-              </>
-            )}
-          </section>
-
-          <section className="sidebar-history sidebar-shared-history" aria-label="Conversas compartilhadas">
-            <button
-              type="button"
-              className="sidebar-history-toggle"
-              onClick={() => setIsSharedHistoryOpen((current) => !current)}
-              aria-expanded={isSharedHistoryOpen}
-            >
-              <span>Conversas Compartilhadas</span>
-              {isSharedHistoryOpen ? (
-                <ChevronDown size={16} strokeWidth={1.8} />
-              ) : (
-                <ChevronRight size={16} strokeWidth={1.8} />
-              )}
-            </button>
-
-            {isSharedHistoryOpen && (
-              <>
-                <label className="sidebar-history-search">
-                  <input
-                    type="search"
-                    placeholder="Buscar compartilhada"
-                    value={sharedSearch}
-                    onChange={(event) => setSharedSearch(event.target.value)}
-                  />
-                </label>
-
-                <nav className="sidebar-history-list">
-                  {filteredSharedConversationHistory.map((item) => (
-                    <NavLink
-                      to={`/chat?shared=${item.id}`}
-                      className="sidebar-history-link sidebar-shared-history-link"
-                      key={item.id}
-                    >
-                      <Share2 size={17} strokeWidth={1.8} />
-
-                      <span className="sidebar-shared-history-text">
-                        <strong>{item.title}</strong>
-                        <small>
-                          {item.owner} · {item.updatedAt}
-                        </small>
-                      </span>
-                    </NavLink>
-                  ))}
-                </nav>
-
-                {filteredSharedConversationHistory.length === 0 && (
-                  <p className="sidebar-history-empty">Nenhuma conversa compartilhada encontrada.</p>
-                )}
-              </>
-            )}
-          </section>
+          <ChatMenu handleGetChat={handleGetSharedChats} />
 
           <div className="sidebar-saved-empty">
             <div className="sidebar-saved-icon">
@@ -794,12 +643,12 @@ export default function Sidebar() {
       )}
 
       {/* ── Modal ── */}
-      {isPolicyModalOpen && (
+      {/* {isPolicyModalOpen && (
         <AddPolicyModal
           onClose={() => setIsPolicyModalOpen(false)}
           onSubmit={handlePolicySubmit}
         />
-      )}
+      )} */}
     </>
   );
 }

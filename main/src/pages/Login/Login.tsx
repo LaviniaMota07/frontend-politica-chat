@@ -1,45 +1,63 @@
-
-
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, LockKeyhole, Mail, ShieldCheck, X, Send } from 'lucide-react';
+import { ArrowRight, LockKeyhole, Mail, ShieldCheck, X, Send, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLoginForm, type LoginFormData } from '../../hooks/forms/useLoginForm';
+import { useRequestAccessForm, type RequestAccessFormData } from '../../hooks/forms/useRequestAccessForm';
+import { useFetch } from '../../hooks/useFetch';
 import './login.css';
+
+interface LoginResponse {
+  user: {
+    name: string;
+    email: string;
+    userTypeId: '1' | '2';
+  };
+}
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [isRequestOpen, setIsRequestOpen] = useState(false);
-  const [requestName, setRequestName] = useState('');
-  const [requestEmail, setRequestEmail] = useState('');
   const [requestSent, setRequestSent] = useState(false);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const email = String(formData.get('email') ?? '');
-    const password = String(formData.get('password') ?? '');
-    login({ email, password });
-    navigate('/chat');
-  }
+  const { register, handleSubmit, formState: { errors } } = useLoginForm();
+  const { post, loading } = useFetch<LoginResponse>();
 
-  function handleRequestSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const {
+    register: registerRequest,
+    handleSubmit: handleRequestSubmitHook,
+    reset: resetRequestForm,
+    formState: { errors: requestErrors },
+  } = useRequestAccessForm();
+
+  const onSubmit = async (data: LoginFormData) => {
+    const response = await post('/user/login', {
+      body: { email: data.email, password: data.password },
+    });
+
+    if (response?.user) {
+      login({
+        ...response.user,
+        role: response.user.userTypeId,
+      });
+      navigate('/chat');
+    }
+  };
+
+  const onRequestSubmit = (_data: RequestAccessFormData) => {
     setRequestSent(true);
     setTimeout(() => {
       setIsRequestOpen(false);
       setRequestSent(false);
-      setRequestName('');
-      setRequestEmail('');
+      resetRequestForm();
     }, 2000);
-  }
+  };
 
   function handleCloseRequest() {
     setIsRequestOpen(false);
-    setRequestName('');
-    setRequestEmail('');
     setRequestSent(false);
+    resetRequestForm();
   }
 
   return (
@@ -68,7 +86,7 @@ export default function Login() {
       </section>
 
       <section className="login-panel" aria-label="Entrar">
-        <form className="login-card" onSubmit={handleSubmit}>
+        <form className="login-card" onSubmit={handleSubmit(onSubmit)}>
           <header className="login-card-header">
             <h2>Entrar</h2>
             <p>Acesse sua conta corporativa para continuar para o assistente.</p>
@@ -76,20 +94,31 @@ export default function Login() {
           <label className="login-field">
             <span>E-mail corporativo</span>
             <div className="login-input-shell">
-              <input type="email" name="email" placeholder="nome@empresa.com" required />
+              <input type="email" placeholder="nome@empresa.com" {...register('email')} />
               <Mail size={17} strokeWidth={1.8} />
             </div>
+            {errors.email && <span className="login-error-message">{errors.email.message}</span>}
           </label>
           <label className="login-field">
             <span>Senha</span>
             <div className="login-input-shell">
-              <input type="password" name="password" placeholder="Digite sua senha" required />
+              <input type="password" placeholder="Digite sua senha" {...register('password')} />
               <LockKeyhole size={17} strokeWidth={1.8} />
             </div>
+            {errors.password && <span className="login-error-message">{errors.password.message}</span>}
           </label>
-          <button type="submit" className="login-submit">
-            Entrar no assistente
-            <ArrowRight size={17} strokeWidth={1.9} />
+          <button type="submit" className="login-submit" disabled={loading}>
+            {loading ? (
+              <>
+                Entrando...
+                <Loader2 size={17} strokeWidth={1.9} className="login-spinner" />
+              </>
+            ) : (
+              <>
+                Entrar no assistente
+                <ArrowRight size={17} strokeWidth={1.9} />
+              </>
+            )}
           </button>
 
           <div className="login-footer-links">
@@ -120,7 +149,7 @@ export default function Login() {
                 <span>Em breve você receberá um retorno.</span>
               </div>
             ) : (
-              <form onSubmit={handleRequestSubmit}>
+              <form onSubmit={handleRequestSubmitHook(onRequestSubmit)}>
                 <h2 className="login-modal-title">Solicitar acesso</h2>
                 <p className="login-modal-desc">
                   Preencha os dados abaixo para enviar sua solicitação de acesso à plataforma.
@@ -132,11 +161,12 @@ export default function Login() {
                     <input
                       type="text"
                       placeholder="Digite seu nome completo"
-                      value={requestName}
-                      onChange={e => setRequestName(e.target.value)}
-                      required
+                      {...registerRequest('name')}
                     />
                   </div>
+                  {requestErrors.name && (
+                    <span className="login-error-message">{requestErrors.name.message}</span>
+                  )}
                 </label>
 
                 <label className="login-field" style={{ marginTop: '14px' }}>
@@ -145,12 +175,13 @@ export default function Login() {
                     <input
                       type="email"
                       placeholder="nome@empresa.com"
-                      value={requestEmail}
-                      onChange={e => setRequestEmail(e.target.value)}
-                      required
+                      {...registerRequest('email')}
                     />
                     <Mail size={17} strokeWidth={1.8} />
                   </div>
+                  {requestErrors.email && (
+                    <span className="login-error-message">{requestErrors.email.message}</span>
+                  )}
                 </label>
 
                 <button type="submit" className="login-submit" style={{ marginTop: '22px' }}>

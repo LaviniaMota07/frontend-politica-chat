@@ -202,6 +202,8 @@
 
 .sidebar-history-list {
   gap: 14px;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .sidebar-history-link {

@@ -3,6 +3,7 @@ import { formatTime } from '../utils/chat.helpers';
 
 interface ChatMessageBubbleProps {
   message: ChatMessage;
+  currentUserId: number | null;
 }
 
 function AssistantAvatarIcon() {
@@ -28,23 +29,50 @@ function AssistantAvatarIcon() {
   );
 }
 
-export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
-  const isUser = message.sender === 'user';
+function PersonAvatarIcon() {
+  return (
+    <svg
+      width="40"
+      height="40"
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <circle cx="20" cy="20" r="20" fill="#10B981" />
+      <circle cx="20" cy="16" r="6" fill="white" />
+      <path d="M20 24C14.4772 24 10 28.4772 10 34H30C30 28.4772 25.5228 24 20 24Z" fill="white" />
+    </svg>
+  );
+}
+
+export function ChatMessageBubble({ message, currentUserId }: ChatMessageBubbleProps) {
+  const isCurrentUser = message.userId === currentUserId;
+  const isAssistant = message.sender === 'assistant';
+  const isOtherUser = message.sender === 'user' && !isCurrentUser;
+
+  const showAvatar = isAssistant || isOtherUser;
+  const isLeftAligned = isAssistant || isOtherUser;
 
   return (
-    <div className={`message-row ${isUser ? 'user' : 'assistant'}`}>
-      {!isUser && (
-        <div className="assistant-avatar" aria-hidden="true">
-          <AssistantAvatarIcon />
+    <div className={`message-row ${isLeftAligned ? 'left' : 'right'}`}>
+      {showAvatar && (
+        <div className="message-avatar" aria-hidden="true">
+          {isAssistant ? <AssistantAvatarIcon /> : <PersonAvatarIcon />}
         </div>
       )}
 
       <div className="message-stack">
-        <div className={`message-bubble ${isUser ? 'user' : 'assistant'}`}>
-          <p className="message-text">{message.content}</p>
+        {(isAssistant || isOtherUser) && (
+          <span className="message-sender">
+            {isAssistant ? message.modelIaName : message.userName || 'Usuário'}
+          </span>
+        )}
+        <div className={`message-bubble ${isLeftAligned ? 'left' : 'right'}`}>
+          <p className="message-text">{message.messageText}</p>
         </div>
 
-        {!isUser && message.sources && message.sources.length > 0 && (
+        {isAssistant && message.sources && message.sources.length > 0 && (
           <div className="message-sources">
             {message.sources.map((source) => (
               <span key={source.id} className="source-chip">
@@ -54,7 +82,7 @@ export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
           </div>
         )}
 
-        <span className="message-time">{formatTime(message.createdAt)}</span>
+        <span className="message-time">{formatTime(message.sendAt)}</span>
       </div>
     </div>
   );
