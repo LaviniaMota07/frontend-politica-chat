@@ -1,85 +1,203 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import { UsersStats } from './components/UsersStats';
 import { UsersTable } from './components/UsersTable';
-import type { User, UserRole, UserStatus } from '../../types/user';
-import '../../styles/admin-users.css';
+import type { User, UserRole, UserStatus } from '../../interfaces/user.interface';
+import { useFetch } from '../../hooks/useFetch';
+import {
+  type BackendDepartment,
+  type BackendPermissionGroup,
+  type BackendPermissionGroupUser,
+  type BackendUser,
+  type PermissionGroupPaginationResponse,
+  type PermissionGroupUsersScrollingResponse,
+  mapBackendUser,
+  roleToTypeUserId,
+} from '../../services/adminApi';
+import { AdminPagination } from '../../components/admin/AdminPagination';
+import { AdminModal } from '../../components/admin/AdminModal';
+import { adminStyles, buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
+import { useInviteUserForm } from '../../hooks/forms/useInviteUserForm';
+import type { InviteUserFormData } from '../../hooks/forms/useInviteUserForm';
 
 const USERS_PER_PAGE = 4;
+const PERMISSION_GROUPS_PAGE_SIZE = 100;
+const EMPTY_DEPARTMENT_LABEL = 'Não informado';
+const SCROLLABLE_USER_MODAL_PANEL =
+  'w-full max-w-[560px] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[22px] border border-[var(--border-neutral)] border-t-[3px] border-t-[var(--accent)] bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-[0_28px_80px_rgba(31,29,25,0.24)]';
 
-const mockUsers: User[] = [
+type PermissionGroupAccess = Record<
+  number,
   {
-    id: 1,
-    name: 'Carla Mendes',
-    email: 'carla.mendes@empresa.com',
-    role: 'Admin',
-    department: 'Governança / RH',
-    status: 'Ativo',
-  },
-  {
-    id: 2,
-    name: 'João Pereira',
-    email: 'joao.pereira@empresa.com',
-    role: 'Admin',
-    department: 'Tecnologia (TI)',
-    status: 'Ativo',
-  },
-  {
-    id: 3,
-    name: 'Ana Souza',
-    email: 'ana.souza@empresa.com',
-    role: 'Default',
-    department: 'Recursos Humanos',
-    status: 'Ativo',
-  },
-  {
-    id: 4,
-    name: 'Rafael Lima',
-    email: 'rafael.lima@empresa.com',
-    role: 'Default',
-    department: 'Financeiro',
-    status: 'Ativo',
-  },
-  {
-    id: 5,
-    name: 'Marina Costa',
-    email: 'marina.costa@empresa.com',
-    role: 'Default',
-    department: 'Tecnologia (TI)',
-    status: 'Bloqueado',
-  },
-];
+    users: BackendPermissionGroupUser[];
+    departments: BackendDepartment[];
+  }
+>;
 
-interface AccessRequest {
-  id: number;
-  name: string;
-  email: string;
+function formatUserDepartments(userId: number, accessByGroup: PermissionGroupAccess) {
+  const departmentNames = new Set<string>();
+
+  Object.values(accessByGroup).forEach(({ users, departments }) => {
+    const userBelongsToGroup = users.some((user) => user.userId === userId);
+
+    if (!userBelongsToGroup) {
+      return;
+    }
+
+    departments.forEach((department) => {
+      if (department.active) {
+        departmentNames.add(department.departmentNm);
+      }
+    });
+  });
+
+  if (departmentNames.size === 0) {
+    return EMPTY_DEPARTMENT_LABEL;
+  }
+
+  return Array.from(departmentNames).sort((first, second) => first.localeCompare(second)).join(', ');
 }
 
-const mockRequests: AccessRequest[] = [
-  { id: 1, name: 'Carlos Oliveira', email: 'carlos.oliveira@empresa.com' },
-  { id: 2, name: 'Mariana Silva', email: 'mariana.silva@empresa.com' },
-  { id: 3, name: 'Roberto Gomes', email: 'roberto.gomes@empresa.com' },
-  { id: 4, name: 'Juliana Martins', email: 'juliana.martins@empresa.com' },
-  { id: 5, name: 'Junior Santos', email: 'junior.santos@empresa.com' },
-  { id: 6, name: 'Gabriel Martins', email: 'gabriel.martins@empresa.com' },
-];
+function toggleNumber(values: number[], nextValue: number) {
+  return values.includes(nextValue)
+    ? values.filter((value) => value !== nextValue)
+    : [...values, nextValue];
+}
 
 export default function AdminUsers() {
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
+  const [permissionGroups, setPermissionGroups] = useState<BackendPermissionGroup[]>([]);
+  const [permissionGroupAccess, setPermissionGroupAccess] = useState<PermissionGroupAccess>({});
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('Todos');
   const [departmentFilter, setDepartmentFilter] = useState('Todos');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [selectedRole, setSelectedRole] = useState<UserRole>('Default');
   const [selectedStatus, setSelectedStatus] = useState<UserStatus>('Ativo');
+  const [selectedGroupToAdd, setSelectedGroupToAdd] = useState<number | ''>('');
+  const [isUpdatingGroups, setIsUpdatingGroups] = useState(false);
+  const [invitePermissionGroupIds, setInvitePermissionGroupIds] = useState<number[]>([]);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [inviteName, setInviteName] = useState('');
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<UserRole>('Default');
   const [currentPage, setCurrentPage] = useState(1);
-  const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
-  const [requests, setRequests] = useState<AccessRequest[]>(mockRequests);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const { get, post, patch, del, loading } = useFetch();
+
+  const {
+    register: registerInvite,
+    handleSubmit: handleInviteSubmit,
+    formState: { errors: inviteErrors },
+    reset: resetInviteForm,
+    watch: watchInvite,
+    setValue: setInviteValue,
+  } = useInviteUserForm();
+
+  const inviteRole = watchInvite('role');
+
+  const fetchAllPermissionGroups = useCallback(async () => {
+    const groups: BackendPermissionGroup[] = [];
+    let currentPermissionGroupsPage = 1;
+    let totalPermissionGroupsPages = 1;
+
+    do {
+      const response = await get(
+        `/permission-groups/pagination?limit=${PERMISSION_GROUPS_PAGE_SIZE}&currentPage=${currentPermissionGroupsPage}`,
+      ) as PermissionGroupPaginationResponse | null;
+
+      if (!response) {
+        break;
+      }
+
+      groups.push(...response.data);
+      totalPermissionGroupsPages = response.pages;
+      currentPermissionGroupsPage += 1;
+    } while (currentPermissionGroupsPage <= totalPermissionGroupsPages);
+
+    return groups;
+  }, [get]);
+
+  const fetchPermissionGroupUsers = useCallback(async (permissionGroupId: number) => {
+    const groupUsers: BackendPermissionGroupUser[] = [];
+    let cursor: number | undefined;
+
+    while (true) {
+      const query = cursor ? `?userId=${cursor}` : '';
+      const response = await get(
+        `/permission-groups/${permissionGroupId}/users/scrolling${query}`,
+      ) as PermissionGroupUsersScrollingResponse | null;
+
+      if (!response) {
+        break;
+      }
+
+      groupUsers.push(...response.data);
+
+      if (response.finish || response.data.length === 0) {
+        break;
+      }
+
+      cursor = response.data[response.data.length - 1].userId;
+    }
+
+    return groupUsers;
+  }, [get]);
+
+  const fetchPermissionGroupAccess = useCallback(async (groups: BackendPermissionGroup[]) => {
+    const accessEntries = await Promise.all(
+      groups.map(async (group) => {
+        const [groupUsers, groupDepartments] = await Promise.all([
+          fetchPermissionGroupUsers(group.permissionGroupId),
+          get(`/permission-groups/${group.permissionGroupId}/departments`) as Promise<BackendDepartment[] | null>,
+        ]);
+
+        return [
+          group.permissionGroupId,
+          {
+            users: groupUsers,
+            departments: groupDepartments ?? [],
+          },
+        ] as const;
+      }),
+    );
+
+    return Object.fromEntries(accessEntries) as PermissionGroupAccess;
+  }, [fetchPermissionGroupUsers, get]);
+
+  const loadUsers = useCallback(async () => {
+    setIsLoadingUsers(true);
+    const [usersResponse, permissionGroupRows] = await Promise.all([
+      get('/user') as Promise<BackendUser[] | null>,
+      fetchAllPermissionGroups(),
+    ]);
+
+    const accessByGroup = await fetchPermissionGroupAccess(permissionGroupRows);
+
+    setPermissionGroups(permissionGroupRows);
+    setPermissionGroupAccess(accessByGroup);
+
+    if (usersResponse) {
+      const mappedUsers = usersResponse.map((user) => ({
+        ...mapBackendUser(user),
+        department: formatUserDepartments(user.userId, accessByGroup),
+      }));
+
+      setUsers(mappedUsers);
+      setEditingUser((current) => {
+        if (!current) {
+          return null;
+        }
+
+        return mappedUsers.find((user) => user.id === current.id) ?? current;
+      });
+    }
+
+    setIsLoadingUsers(false);
+  }, [fetchAllPermissionGroups, fetchPermissionGroupAccess, get]);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      void loadUsers();
+    });
+  }, [loadUsers]);
 
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
@@ -105,112 +223,236 @@ export default function AdminUsers() {
   const pageStart = (currentPage - 1) * USERS_PER_PAGE;
   const pageEnd = pageStart + USERS_PER_PAGE;
   const paginatedUsers = filteredUsers.slice(pageStart, pageEnd);
-  const firstVisibleUser = filteredUsers.length === 0 ? 0 : pageStart + 1;
-  const lastVisibleUser = Math.min(pageEnd, filteredUsers.length);
+  const departmentFilters = ['Todos', ...new Set(users.map((user) => user.department))];
+  const activePermissionGroups = permissionGroups.filter((group) => group.active);
 
-  const departments = ['Todos', ...new Set(users.map((user) => user.department))];
+  const getUserPermissionGroups = useCallback(
+    (userId: number) =>
+      permissionGroups.filter(
+        (group) =>
+          group.active &&
+          permissionGroupAccess[group.permissionGroupId]?.users.some(
+            (user) => user.userId === userId,
+          ),
+      ),
+    [permissionGroupAccess, permissionGroups],
+  );
+
+  const editingUserPermissionGroups = useMemo(
+    () => (editingUser ? getUserPermissionGroups(editingUser.id) : []),
+    [editingUser, getUserPermissionGroups],
+  );
+
+  const availableGroupsToAdd = useMemo(() => {
+    if (!editingUser) {
+      return [];
+    }
+
+    const linkedGroupIds = new Set(
+      editingUserPermissionGroups.map((group) => group.permissionGroupId),
+    );
+
+    return activePermissionGroups.filter(
+      (group) => !linkedGroupIds.has(group.permissionGroupId),
+    );
+  }, [activePermissionGroups, editingUser, editingUserPermissionGroups]);
 
   useEffect(() => {
-    setCurrentPage(1);
+    queueMicrotask(() => setCurrentPage(1));
   }, [search, roleFilter, departmentFilter]);
 
   useEffect(() => {
-    setCurrentPage((page) => Math.min(page, totalPages));
+    queueMicrotask(() => setCurrentPage((page) => Math.min(page, totalPages)));
   }, [totalPages]);
 
   function handleOpenRoleModal(user: User) {
     setEditingUser(user);
     setSelectedRole(user.role);
     setSelectedStatus(user.status);
+    setSelectedGroupToAdd('');
   }
 
   function handleCloseRoleModal() {
     setEditingUser(null);
+    setSelectedGroupToAdd('');
   }
 
-  function handleSaveRole() {
+  async function handleAddPermissionGroup() {
+    if (!editingUser || selectedGroupToAdd === '') {
+      return;
+    }
+
+    const userAlreadyInGroup = permissionGroupAccess[selectedGroupToAdd]?.users.some(
+      (user) => user.userId === editingUser.id,
+    );
+
+    if (userAlreadyInGroup) {
+      toast.success('Usuário já está vinculado a este grupo de permissão.');
+      return;
+    }
+
+    setIsUpdatingGroups(true);
+
+    const response = await post('/permission-groups/users', {
+      body: {
+        permissionGroupId: selectedGroupToAdd,
+        userId: editingUser.id,
+      },
+    });
+
+    if (response) {
+      toast.success('Grupo de permissão adicionado ao usuário.');
+      setSelectedGroupToAdd('');
+      await loadUsers();
+    }
+
+    setIsUpdatingGroups(false);
+  }
+
+  async function handleRemovePermissionGroup(permissionGroupId: number) {
     if (!editingUser) {
       return;
     }
 
-    setUsers((currentUsers) =>
-      currentUsers.map((user) =>
-        user.id === editingUser.id
-          ? { ...user, role: selectedRole, status: selectedStatus }
-          : user
-      )
+    setIsUpdatingGroups(true);
+
+    const response = await del(
+      `/permission-groups/${permissionGroupId}/users/${editingUser.id}`,
+      {
+        successAlert: {
+          title: 'Grupo removido',
+          message: 'O usuário foi desvinculado do grupo de permissão.',
+        },
+      },
     );
+
+    if (response) {
+      await loadUsers();
+    }
+
+    setIsUpdatingGroups(false);
+  }
+
+  async function handleSaveRole() {
+    if (!editingUser) {
+      return;
+    }
+
+    if (selectedStatus === 'Bloqueado') {
+      const response = await del(`/user/${editingUser.id}`, {
+        successAlert: {
+          title: 'Usuário bloqueado',
+          message: 'O usuário foi desativado no backend.',
+        },
+      });
+
+      if (response) {
+        setUsers((currentUsers) =>
+          currentUsers.filter((user) => user.id !== editingUser.id)
+        );
+      }
+
+      handleCloseRoleModal();
+      return;
+    }
+
+    const response = await patch('/user', {
+      body: {
+        userId: editingUser.id,
+        name: editingUser.name,
+        email: editingUser.email,
+        typeUserId: roleToTypeUserId(selectedRole),
+      },
+      successAlert: {
+        title: 'Usuário atualizado',
+        message: 'O papel do usuário foi salvo no backend.',
+      },
+    }) as BackendUser | null;
+
+    if (response) {
+      setUsers((currentUsers) =>
+        currentUsers.map((user) => {
+          if (user.id !== editingUser.id) {
+            return user;
+          }
+
+          return {
+            ...mapBackendUser(response),
+            department: user.department,
+          };
+        })
+      );
+    }
+
     handleCloseRoleModal();
   }
 
   function handleCloseInviteModal() {
     setIsInviteModalOpen(false);
-    setInviteName('');
-    setInviteEmail('');
-    setInviteRole('Default');
+    setInvitePermissionGroupIds([]);
+    resetInviteForm();
   }
 
-  function handleInviteUser(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleInviteUser(data: InviteUserFormData) {
+    const response = await post('/user', {
+      body: {
+        name: data.name.trim(),
+        email: data.email.trim(),
+        password: data.password,
+        typeUserId: roleToTypeUserId(data.role),
+      },
+      successAlert: {
+        title: 'Usuário criado',
+        message: 'O usuário foi cadastrado com sucesso.',
+      },
+    }) as BackendUser | null;
 
-    const nextUser: User = {
-      id: Math.max(...users.map((user) => user.id), 0) + 1,
-      name: inviteName.trim(),
-      email: inviteEmail.trim(),
-      department: 'Não informado',
-      role: inviteRole,
-      status: 'Ativo',
-    };
+    if (!response) {
+      return;
+    }
 
-    setUsers((currentUsers) => [nextUser, ...currentUsers]);
+    if (invitePermissionGroupIds.length > 0) {
+      const linkResults = await Promise.all(
+        invitePermissionGroupIds.map((permissionGroupId) =>
+          post('/permission-groups/users', {
+            body: {
+              permissionGroupId,
+              userId: response.userId,
+            },
+          }),
+        ),
+      );
+
+      const linkedCount = linkResults.filter(Boolean).length;
+
+      if (linkedCount > 0) {
+        toast.success(
+          linkedCount === 1
+            ? 'Usuário vinculado ao grupo de permissão.'
+            : `Usuário vinculado a ${linkedCount} grupos de permissão.`,
+        );
+      }
+    }
+
+    await loadUsers();
     handleCloseInviteModal();
   }
 
-  function handleAcceptRequest(id: number) {
-    const req = requests.find((r) => r.id === id);
-    if (req) {
-      const nextUser: User = {
-        id: Math.max(...users.map((u) => u.id), 0) + 1,
-        name: req.name,
-        email: req.email,
-        department: 'Não informado',
-        role: 'Default',
-        status: 'Ativo',
-      };
-      setUsers((current) => [nextUser, ...current]);
-    }
-    setRequests((current) => current.filter((r) => r.id !== id));
-  }
-
-  function handleRejectRequest(id: number) {
-    setRequests((current) => current.filter((r) => r.id !== id));
-  }
-
   return (
-    <main className="admin-users-page">
-      <section className="admin-users-content">
-        <header className="admin-users-header">
+    <main className={adminStyles.page}>
+      <section className={adminStyles.content}>
+        <header className={adminStyles.header}>
           <div>
-            <h1>Gerenciamento de Usuários</h1>
+            <h1 className={adminStyles.title}>Gerenciamento de Usuários</h1>
           </div>
 
-          <div className="header-actions">
+          <div className={adminStyles.headerActions}>
             <button
               type="button"
-              className="secondary-btn requests-btn"
-              onClick={() => setIsRequestsModalOpen(true)}
-            >
-              Solicitações
-              {requests.length > 0 && (
-                <span className="requests-badge">{requests.length}</span>
-              )}
-            </button>
-            <button
-              type="button"
-              className="primary-btn"
+              className={buttonStyles.primary}
               onClick={() => setIsInviteModalOpen(true)}
             >
-              Convidar usuário
+              Novo usuário
             </button>
           </div>
         </header>
@@ -222,23 +464,23 @@ export default function AdminUsers() {
           activeUsers={activeUsers}
         />
 
-        <section className="users-section">
-          <div className="users-section-header">
-            <h2>Usuários</h2>
+        <section className={adminStyles.section}>
+          <div className={adminStyles.sectionHeader}>
+            <h2 className={adminStyles.sectionTitle}>Usuários</h2>
 
-            <div className="filters-row">
+            <div className={adminStyles.filtersRow}>
               <input
                 type="text"
                 placeholder="Buscar por nome ou e-mail"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="filter-input"
+                className={`${formStyles.input} ${adminStyles.filterInput}`}
               />
 
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
-                className="filter-select"
+                className={formStyles.select}
               >
                 <option value="Todos">Papel: Todos</option>
                 <option value="Admin">Admin</option>
@@ -248,9 +490,9 @@ export default function AdminUsers() {
               <select
                 value={departmentFilter}
                 onChange={(e) => setDepartmentFilter(e.target.value)}
-                className="filter-select"
+                className={formStyles.select}
               >
-                {departments.map((department) => (
+                {departmentFilters.map((department) => (
                   <option key={department} value={department}>
                     {department === 'Todos' ? 'Departamento' : department}
                   </option>
@@ -259,140 +501,137 @@ export default function AdminUsers() {
             </div>
           </div>
 
-          <UsersTable users={paginatedUsers} onEditRole={handleOpenRoleModal} />
-
-          <div className="table-pagination" aria-label="Paginação de usuários">
-            <span className="pagination-summary">
-              Mostrando {firstVisibleUser}-{lastVisibleUser} de {filteredUsers.length} usuários
-            </span>
-
-            <div className="pagination-actions">
-              <button
-                type="button"
-                className="pagination-btn"
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                disabled={currentPage === 1}
-                aria-label="Página anterior"
-                title="Página anterior"
-              >
-                <ChevronLeft size={16} />
-              </button>
-
-              <span className="pagination-page">
-                Página {currentPage} de {totalPages}
-              </span>
-
-              <button
-                type="button"
-                className="pagination-btn"
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                disabled={currentPage === totalPages}
-                aria-label="Próxima página"
-                title="Próxima página"
-              >
-                <ChevronRight size={16} />
-              </button>
+          {isLoadingUsers ? (
+            <div className={adminStyles.tableWrapper}>
+              <div className={adminStyles.emptyCell}>Carregando usuários...</div>
             </div>
-          </div>
+          ) : (
+            <UsersTable users={paginatedUsers} onEditRole={handleOpenRoleModal} />
+          )}
+
+          <AdminPagination
+            currentPage={currentPage}
+            totalItems={filteredUsers.length}
+            perPage={USERS_PER_PAGE}
+            itemLabel="usuários"
+            onChange={setCurrentPage}
+            ariaLabel="Paginação de usuários"
+          />
         </section>
       </section>
 
-      {/* Modal Solicitações de Acesso */}
-      {isRequestsModalOpen && (
-        <div
-          className="role-modal-backdrop"
-          role="presentation"
-          onClick={() => setIsRequestsModalOpen(false)}
-        >
-          <section
-            className="role-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="requests-modal-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <header className="role-modal-header">
-              <div>
-                <h2 id="requests-modal-title">Solicitações de Acesso</h2>
-              </div>
-              <button
-                type="button"
-                className="role-modal-close"
-                onClick={() => setIsRequestsModalOpen(false)}
-                aria-label="Fechar"
-              >
-                x
-              </button>
-            </header>
-
-            {requests.length === 0 ? (
-              <p className="requests-empty">Nenhuma solicitação pendente.</p>
-            ) : (
-              <div className="requests-list">
-                {requests.map((req) => (
-                  <div key={req.id} className="request-item">
-                    <div className="request-info">
-                      <strong className="request-name">{req.name}</strong>
-                      <span className="request-email">{req.email}</span>
-                    </div>
-                    <div className="request-actions">
-                      <button
-                        type="button"
-                        className="request-btn reject"
-                        onClick={() => handleRejectRequest(req.id)}
-                      >
-                        ✕ Recusar
-                      </button>
-                      <button
-                        type="button"
-                        className="request-btn accept"
-                        onClick={() => handleAcceptRequest(req.id)}
-                      >
-                        ✓ Aceitar
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-      )}
-
-      {/* Modal Editar Papel */}
-      {editingUser && (
-        <div className="role-modal-backdrop" role="presentation">
-          <section
-            className="role-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="role-modal-title"
-          >
-            <header className="role-modal-header">
-              <div>
-                <h2 id="role-modal-title">Editar papel</h2>
-                <p>{editingUser.name}</p>
-              </div>
-
-              <button
-                type="button"
-                className="role-modal-close"
-                onClick={handleCloseRoleModal}
-                aria-label="Fechar"
-              >
-                x
-              </button>
-            </header>
-
-            <div className="role-modal-user">
+      <AdminModal
+        open={Boolean(editingUser)}
+        title="Editar usuário"
+        titleId="role-modal-title"
+        description={editingUser?.name}
+        onClose={handleCloseRoleModal}
+        panelClassName={SCROLLABLE_USER_MODAL_PANEL}
+        actions={
+          <>
+            <button
+              type="button"
+              className={buttonStyles.secondary}
+              onClick={handleCloseRoleModal}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className={buttonStyles.primary}
+              onClick={handleSaveRole}
+              disabled={loading}
+            >
+              {selectedStatus === 'Bloqueado' ? 'Bloquear usuário' : 'Salvar alteração'}
+            </button>
+          </>
+        }
+      >
+        {editingUser && (
+          <>
+            <div className="mx-6 mt-5 flex flex-col gap-1 rounded-2xl border border-[var(--border-neutral)] bg-[var(--bg-body)] p-4 text-sm text-[var(--text-secondary)]">
               <span>{editingUser.email}</span>
-              <strong>{editingUser.department}</strong>
+              <strong className="text-[var(--text-primary)]">
+                {editingUserPermissionGroups.length > 0
+                  ? editingUserPermissionGroups.map((group) => group.permissionGroupNm).join(', ')
+                  : 'Nenhum grupo de permissão vinculado'}
+              </strong>
             </div>
 
-            <fieldset className="role-options">
-              <legend>Novo papel</legend>
+            <fieldset className={modalStyles.body}>
+              <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Grupos de permissão</legend>
 
-              <label className="role-option">
+              <div className="flex flex-wrap gap-2 rounded-2xl border border-[var(--border-neutral)] bg-[var(--bg-body)] p-4">
+                {editingUserPermissionGroups.length === 0 ? (
+                  <span className="text-sm text-[var(--text-secondary)]">Nenhum grupo vinculado</span>
+                ) : (
+                  editingUserPermissionGroups.map((group) => (
+                    <span
+                      key={group.permissionGroupId}
+                      className="inline-flex items-center gap-2 rounded-full border border-[var(--border-neutral)] bg-[var(--bg-elevated)] px-3 py-1 text-sm text-[var(--text-primary)]"
+                    >
+                      {group.permissionGroupNm}
+                      <button
+                        type="button"
+                        className="text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:opacity-50"
+                        onClick={() => handleRemovePermissionGroup(group.permissionGroupId)}
+                        disabled={isUpdatingGroups || loading}
+                        aria-label={`Remover ${group.permissionGroupNm}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+
+              <div className={adminStyles.formGrid}>
+                <label className={formStyles.label}>
+                  <span>Adicionar grupo</span>
+                  <select
+                    className={formStyles.select}
+                    value={selectedGroupToAdd}
+                    disabled={availableGroupsToAdd.length === 0 || isUpdatingGroups}
+                    onChange={(event) =>
+                      setSelectedGroupToAdd(event.target.value ? Number(event.target.value) : '')
+                    }
+                  >
+                    <option value="">
+                      {availableGroupsToAdd.length === 0
+                        ? 'Nenhum grupo disponível'
+                        : 'Selecione um grupo'}
+                    </option>
+                    {availableGroupsToAdd.map((group) => (
+                      <option key={group.permissionGroupId} value={group.permissionGroupId}>
+                        {group.permissionGroupNm}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="rounded-2xl border border-[var(--border-neutral)] bg-[var(--bg-body)] p-4 text-sm leading-6 text-[var(--text-secondary)]">
+                O usuário pode pertencer a mais de um grupo de permissão. Cada alteração é salva imediatamente.
+              </div>
+
+              <button
+                type="button"
+                className={buttonStyles.secondary}
+                onClick={handleAddPermissionGroup}
+                disabled={
+                  loading ||
+                  isUpdatingGroups ||
+                  selectedGroupToAdd === ''
+                }
+              >
+                {isUpdatingGroups ? 'Atualizando...' : 'Adicionar grupo'}
+              </button>
+            </fieldset>
+
+            <fieldset className={modalStyles.body}>
+              <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Novo papel</legend>
+
+              <label className={modalStyles.option}>
                 <input
                   type="radio"
                   name="user-role"
@@ -400,13 +639,13 @@ export default function AdminUsers() {
                   checked={selectedRole === 'Admin'}
                   onChange={() => setSelectedRole('Admin')}
                 />
-                <span>
+                <span className={modalStyles.optionText}>
                   <strong>Admin</strong>
                   Acesso ao chat e páginas de gerenciamento.
                 </span>
               </label>
 
-              <label className="role-option">
+              <label className={modalStyles.option}>
                 <input
                   type="radio"
                   name="user-role"
@@ -414,17 +653,17 @@ export default function AdminUsers() {
                   checked={selectedRole === 'Default'}
                   onChange={() => setSelectedRole('Default')}
                 />
-                <span>
+                <span className={modalStyles.optionText}>
                   <strong>Default</strong>
                   Acesso apenas ao chat e fontes disponíveis.
                 </span>
               </label>
             </fieldset>
 
-            <fieldset className="role-options status-options">
-              <legend>Status do usuário</legend>
+            <fieldset className={modalStyles.body}>
+              <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Status do usuário</legend>
 
-              <label className="role-option status-option">
+              <label className={modalStyles.option}>
                 <input
                   type="radio"
                   name="user-status"
@@ -432,13 +671,13 @@ export default function AdminUsers() {
                   checked={selectedStatus === 'Ativo'}
                   onChange={() => setSelectedStatus('Ativo')}
                 />
-                <span>
+                <span className={modalStyles.optionText}>
                   <strong>Ativo</strong>
                   Usuário liberado para acessar a plataforma.
                 </span>
               </label>
 
-              <label className="role-option status-option">
+              <label className={modalStyles.option}>
                 <input
                   type="radio"
                   name="user-status"
@@ -446,130 +685,133 @@ export default function AdminUsers() {
                   checked={selectedStatus === 'Bloqueado'}
                   onChange={() => setSelectedStatus('Bloqueado')}
                 />
-                <span>
+                <span className={modalStyles.optionText}>
                   <strong>Bloqueado</strong>
                   Usuário sem acesso até nova alteração.
                 </span>
               </label>
             </fieldset>
+          </>
+        )}
+      </AdminModal>
 
-            <footer className="role-modal-actions">
-              <button
-                type="button"
-                className="secondary-btn"
-                onClick={handleCloseRoleModal}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="primary-btn"
-                onClick={handleSaveRole}
-              >
-                Salvar alteração
-              </button>
-            </footer>
-          </section>
+      <AdminModal
+        open={isInviteModalOpen}
+        as="form"
+        title="Novo usuário"
+        titleId="invite-modal-title"
+        description="Cadastre uma pessoa diretamente no backend."
+        onClose={handleCloseInviteModal}
+        onSubmit={handleInviteSubmit(handleInviteUser)}
+        actions={
+          <>
+            <button
+              type="button"
+              className={buttonStyles.secondary}
+              onClick={handleCloseInviteModal}
+            >
+              Cancelar
+            </button>
+            <button type="submit" className={buttonStyles.primary} disabled={loading}>
+              Criar usuário
+            </button>
+          </>
+        }
+      >
+        <div className={`${modalStyles.body} ${adminStyles.formGrid}`}>
+          <label className={formStyles.label}>
+            <span>Nome</span>
+            <input
+              className={formStyles.input}
+              type="text"
+              placeholder="Ex: Beatriz Almeida"
+              {...registerInvite('name')}
+            />
+            {inviteErrors.name && <p className={formStyles.error}>{inviteErrors.name.message}</p>}
+          </label>
+
+          <label className={formStyles.label}>
+            <span>E-mail</span>
+            <input
+              className={formStyles.input}
+              type="email"
+              placeholder="nome@empresa.com"
+              {...registerInvite('email')}
+            />
+            {inviteErrors.email && <p className={formStyles.error}>{inviteErrors.email.message}</p>}
+          </label>
+
+          <label className={formStyles.label}>
+            <span>Senha inicial</span>
+            <input
+              className={formStyles.input}
+              type="password"
+              placeholder="Mínimo 6 caracteres"
+              {...registerInvite('password')}
+            />
+            {inviteErrors.password && <p className={formStyles.error}>{inviteErrors.password.message}</p>}
+          </label>
         </div>
-      )}
 
-      {/* Modal Convidar */}
-      {isInviteModalOpen && (
-        <div className="role-modal-backdrop" role="presentation">
-          <form
-            className="role-modal invite-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="invite-modal-title"
-            onSubmit={handleInviteUser}
-          >
-            <header className="role-modal-header">
-              <div>
-                <h2 id="invite-modal-title">Convidar usuário</h2>
-                <p>Adicione uma pessoa à lista de usuários.</p>
-              </div>
+        <fieldset className={modalStyles.body}>
+          <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Grupos de permissão</legend>
 
-              <button
-                type="button"
-                className="role-modal-close"
-                onClick={handleCloseInviteModal}
-                aria-label="Fechar"
-              >
-                x
-              </button>
-            </header>
+          <div className={`${adminStyles.deleteBody} mx-0`}>
+            {activePermissionGroups.length === 0 ? (
+              <p className="text-sm text-[var(--text-secondary)]">Nenhum grupo de permissão ativo disponível.</p>
+            ) : (
+              activePermissionGroups.map((group) => (
+                <label key={group.permissionGroupId} className={modalStyles.option}>
+                  <input
+                    type="checkbox"
+                    checked={invitePermissionGroupIds.includes(group.permissionGroupId)}
+                    onChange={() =>
+                      setInvitePermissionGroupIds((current) =>
+                        toggleNumber(current, group.permissionGroupId),
+                      )
+                    }
+                  />
+                  <span>{group.permissionGroupNm}</span>
+                </label>
+              ))
+            )}
+          </div>
 
-            <div className="invite-form-grid">
-              <label className="invite-field">
-                <span>Nome</span>
-                <input
-                  type="text"
-                  value={inviteName}
-                  onChange={(event) => setInviteName(event.target.value)}
-                  placeholder="Ex: Beatriz Almeida"
-                  required
-                />
-              </label>
+          <div className="rounded-2xl border border-[var(--border-neutral)] bg-[var(--bg-body)] p-4 text-sm leading-6 text-[var(--text-secondary)]">
+            Selecione um ou mais grupos. O usuário será criado e depois adicionado a cada grupo escolhido.
+          </div>
+        </fieldset>
 
-              <label className="invite-field">
-                <span>E-mail</span>
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(event) => setInviteEmail(event.target.value)}
-                  placeholder="nome@empresa.com"
-                  required
-                />
-              </label>
-            </div>
+        <fieldset className={modalStyles.body}>
+          <legend className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Papel inicial</legend>
 
-            <fieldset className="role-options invite-role-options">
-              <legend>Papel inicial</legend>
+          <label className={modalStyles.option}>
+            <input
+              type="radio"
+              value="Admin"
+              checked={inviteRole === 'Admin'}
+              onChange={() => setInviteValue('role', 'Admin')}
+            />
+            <span className={modalStyles.optionText}>
+              <strong>Admin</strong>
+              Acesso ao chat e páginas de gerenciamento.
+            </span>
+          </label>
 
-              <label className="role-option">
-                <input
-                  type="radio"
-                  name="invite-role"
-                  value="Admin"
-                  checked={inviteRole === 'Admin'}
-                  onChange={() => setInviteRole('Admin')}
-                />
-                <span>
-                  <strong>Admin</strong>
-                  Acesso ao chat e páginas de gerenciamento.
-                </span>
-              </label>
-
-              <label className="role-option">
-                <input
-                  type="radio"
-                  name="invite-role"
-                  value="Default"
-                  checked={inviteRole === 'Default'}
-                  onChange={() => setInviteRole('Default')}
-                />
-                <span>
-                  <strong>Default</strong>
-                  Acesso apenas ao chat e fontes disponíveis.
-                </span>
-              </label>
-            </fieldset>
-
-            <footer className="role-modal-actions">
-              <button
-                type="button"
-                className="secondary-btn"
-                onClick={handleCloseInviteModal}
-              >
-                Cancelar
-              </button>
-              <button type="submit" className="primary-btn">
-                Enviar convite
-              </button>
-            </footer>
-          </form>
-        </div>
-      )}
+          <label className={modalStyles.option}>
+            <input
+              type="radio"
+              value="Default"
+              checked={inviteRole === 'Default'}
+              onChange={() => setInviteValue('role', 'Default')}
+            />
+            <span className={modalStyles.optionText}>
+              <strong>Default</strong>
+              Acesso apenas ao chat e fontes disponíveis.
+            </span>
+          </label>
+        </fieldset>
+      </AdminModal>
     </main>
   );
 }

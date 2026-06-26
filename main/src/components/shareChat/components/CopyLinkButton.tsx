@@ -1,13 +1,14 @@
-import { Check, Copy } from "lucide-react";
-import { useState } from "react";
+import { Check, Copy } from 'lucide-react';
+import { useState } from 'react';
+import { buttonStyles, formStyles } from '../../../utils/tailwindStyles';
 
 const CopyLinkButton = () => {
-  const [sharedLink, setSharedLink] = useState<string>("");
+  const [sharedLink, setSharedLink] = useState<string>('');
   const [isCopied, setIsCopied] = useState<boolean>(false);
 
   function handleGenerateLink() {
-    alert("Link gerado com sucesso!");
-    setSharedLink("https://exemplo.com/link-compartilhado");
+    alert('Link gerado com sucesso!');
+    setSharedLink('https://exemplo.com/link-compartilhado');
   }
 
   function handleCopyLink() {
@@ -19,14 +20,20 @@ const CopyLinkButton = () => {
   }
 
   return (
-    <div className="chat-share-link-area">
-      <button type="button" className="chat-share-generate" onClick={handleGenerateLink}>
+    <div className="border-t border-white/10 px-6 py-5">
+      <button type="button" className={buttonStyles.secondary} onClick={handleGenerateLink}>
         Gerar link
       </button>
-      {sharedLink != "" && (
-        <div className="chat-share-link-box">
-          <input type="text" value={sharedLink} readOnly aria-label="Link compartilhável" />
-          <button type="button" onClick={handleCopyLink}>
+      {sharedLink !== '' && (
+        <div className="mt-3 flex gap-2 max-[640px]:flex-col">
+          <input
+            className={formStyles.input}
+            type="text"
+            value={sharedLink}
+            readOnly
+            aria-label="Link compartilhável"
+          />
+          <button type="button" className={buttonStyles.primary} onClick={handleCopyLink}>
             {isCopied ? <Check size={16} /> : <Copy size={16} />}
             {isCopied ? 'Copiado' : 'Copiar'}
           </button>

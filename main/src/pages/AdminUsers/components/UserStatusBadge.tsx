@@ -1,14 +1,13 @@
 import type { UserStatus } from '../../../types/user';
+import { adminStyles } from '../../../utils/tailwindStyles';
 
 interface UserStatusBadgeProps {
   status: UserStatus;
 }
 
 export function UserStatusBadge({ status }: UserStatusBadgeProps) {
-  const statusClass = status.toLowerCase();
-
   return (
-    <span className={`status-badge ${statusClass}`}>
+    <span className={status === 'Ativo' ? adminStyles.badgeActive : adminStyles.badgeBlocked}>
       {status}
     </span>
   );

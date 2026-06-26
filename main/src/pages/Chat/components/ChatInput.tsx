@@ -1,9 +1,11 @@
 import { ArrowRight, Bot } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
-import type { DepartmentResponse, SystemResponse } from '../types/chat.types';
-import FilterChat, { type FilterItem } from '../../../components/filterChat/Index';
-import { useFetch } from '../../../hooks/useFetch';
+import FilterChat, { type FilterItem } from '../../../components/filterChat/FilterChat';
+import { chatStyles } from '../../../utils/tailwindStyles';
+import type { ChatAiProvider } from '../hooks/useChatAiProviders';
+
+type FetchFilterItems = (lastItemId?: number) => Promise<{ data: FilterItem[]; finish: boolean }>;
 
 interface ChatInputProps {
   value: string;
@@ -11,14 +13,16 @@ interface ChatInputProps {
   onSend: () => void;
   isSending?: boolean;
   sourcesCount?: number;
-  selectedDepartments?: string[];
+  selectedDepartments?: number[];
   departments: string[];
-  onDepartmentsChange: (departments: string[]) => void;
-  selectedSystems?: string[];
+  onDepartmentsChange: (departments: number[]) => void;
+  fetchDepartments: FetchFilterItems;
+  selectedSystems?: number[];
   systems: string[];
-  onSystemsChange: (systems: string[]) => void;
-  selectedAiProvider: number;
-  aiProviders: number[];
+  onSystemsChange: (systems: number[]) => void;
+  fetchSystems: FetchFilterItems;
+  selectedAiProvider: number | null;
+  aiProviders: ChatAiProvider[];
   onAiProviderChange: (provider: number) => void;
 }
 
@@ -28,22 +32,54 @@ export function ChatInput({
   onSend,
   isSending = false,
   sourcesCount = 0,
-  selectedDepartments = ['Todos os departamentos'],
+  selectedDepartments = [],
   departments,
   onDepartmentsChange,
-  selectedSystems = ['Todos os sistemas'],
+  fetchDepartments,
+  selectedSystems = [],
   systems,
   onSystemsChange,
+  fetchSystems,
   selectedAiProvider,
   aiProviders,
   onAiProviderChange,
 }: ChatInputProps) {
 
-  const { get } = useFetch();
+  const sourcesLabel = sourcesCount > 0
+    ? `${sourcesCount} fonte${sourcesCount > 1 ? 's' : ''}`
+    : 'Fontes aguardando backend';
+  const selectedProvider = aiProviders.find((provider) => provider.modelIaId === selectedAiProvider);
+  const selectedProviderLabel = selectedProvider?.modelNm ?? '-';
+  const selectedProviderDescription = selectedProvider?.chatModel ?? 'nenhuma';
 
+  const shellRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const [departmentSearch, setDepartmentSearch] = useState('');
   const [systemSearch, setSystemSearch] = useState('');
+
+  useEffect(() => {
+    const shell = shellRef.current;
+
+    if (!shell) {
+      return;
+    }
+
+    const updateInputHeight = () => {
+      document.documentElement.style.setProperty('--chat-input-height', `${shell.offsetHeight}px`);
+    };
+
+    updateInputHeight();
+
+    const resizeObserver = new ResizeObserver(updateInputHeight);
+    resizeObserver.observe(shell);
+    window.addEventListener('resize', updateInputHeight);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateInputHeight);
+      document.documentElement.style.removeProperty('--chat-input-height');
+    };
+  }, []);
 
   useEffect(() => {
     const input = inputRef.current;
@@ -63,57 +99,10 @@ export function ChatInput({
     }
   }
 
-  async function handleGetDepartment(lastIdDepartment?: number): Promise<{ data: FilterItem[], finish: boolean }> {
-
-    let url = `/department/scrolling`
-
-    if (lastIdDepartment) {
-      url += `?departmentId=${lastIdDepartment}`
-    }
-
-    const response = await get(url) as { data: DepartmentResponse[], finish: boolean } | null
-    if (response) {
-      const data = response.data.map((department: DepartmentResponse): FilterItem => {
-        return {
-          itemId: department.departmentId,
-          itemNm: department.departmentNm
-        }
-      })
-      return { data, finish: response.finish }
-    }
-
-    return { data: [], finish: true }
-
-  }
-
-  async function handleGetSystem(lastIdSystem?: number): Promise<{ data: FilterItem[], finish: boolean }> {
-
-    let url = `/systems/scrolling`
-
-    if (lastIdSystem) {
-      url += `?systemId=${lastIdSystem}`
-    }
-
-    const response = await get(url) as { data: SystemResponse[], finish: boolean } | null
-
-    if (response) {
-      const data = response.data.map((department: SystemResponse): FilterItem => {
-        return {
-          itemId: department.systemId,
-          itemNm: department.systemNm
-        }
-      })
-      return { data, finish: response.finish }
-    }
-
-    return { data: [], finish: true }
-
-  }
-
   return (
-    <div className="chat-input-shell">
-      <div className="chat-input-wrapper">
-        <div className="chat-filter-strip" aria-label="Filtros da conversa">
+    <div className={chatStyles.inputShell} ref={shellRef}>
+      <div className={chatStyles.inputWrapper}>
+        <div className={chatStyles.filterStrip} aria-label="Filtros da conversa">
 
           <FilterChat
             title="Departamentos"
@@ -122,8 +111,8 @@ export function ChatInput({
             onSearchChange={setDepartmentSearch}
             selectedItems={selectedDepartments}
             onItemsChange={onDepartmentsChange}
-            fetchItems={handleGetDepartment}
-            allOptionLabel={departments[0]}
+            fetchItems={fetchDepartments}
+            allOptionLabel={departments[0] ?? 'Todos os departamentos'}
           />
 
           <FilterChat
@@ -133,30 +122,35 @@ export function ChatInput({
             onSearchChange={setSystemSearch}
             selectedItems={selectedSystems}
             onItemsChange={onSystemsChange}
-            fetchItems={handleGetSystem}
-            allOptionLabel={systems[0]}
+            fetchItems={fetchSystems}
+            allOptionLabel={systems[0] ?? 'Todos os sistemas'}
           />
 
-          <details className="chat-filter-menu">
+          <details className={chatStyles.filterMenu}>
             <summary
-              className="chat-department-filter"
-              title={`IA: ${selectedAiProvider}`}
-              aria-label={`Escolher IA para responder. Seleção atual: ${selectedAiProvider}`}
+              className={chatStyles.filterSummary}
+              title={`IA: ${selectedProviderDescription}`}
+              aria-label={`Escolher IA para responder. Seleção atual: ${selectedProviderLabel}`}
             >
               <Bot size={15} />
-              <span>{selectedAiProvider}</span>
+              <span>{selectedProviderLabel}</span>
             </summary>
 
-            <div className="chat-filter-options chat-provider-options">
+            <div className={chatStyles.filterOptions}>
               {aiProviders.map((provider) => (
-                <label className="chat-filter-option" key={provider}>
+                <label
+                  className={chatStyles.filterOption}
+                  key={provider.modelIaId}
+                  title={provider.chatModel}
+                >
                   <input
                     type="radio"
                     name="chat-ai-provider"
-                    checked={selectedAiProvider === provider}
-                    onChange={() => onAiProviderChange(provider)}
+                    value={provider.modelIaId}
+                    checked={selectedAiProvider === provider.modelIaId}
+                    onChange={() => onAiProviderChange(provider.modelIaId)}
                   />
-                  <span>{provider}</span>
+                  <span>{provider.modelNm}</span>
                 </label>
               ))}
             </div>
@@ -165,7 +159,7 @@ export function ChatInput({
 
         <textarea
           ref={inputRef}
-          className="chat-input"
+          className={chatStyles.textArea}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
@@ -173,12 +167,12 @@ export function ChatInput({
           rows={1}
         />
 
-        <div className="chat-input-actions">
-          <span className="chat-sources-counter">{sourcesCount} fontes</span>
+        <div className={chatStyles.inputActions}>
+          <span className="text-xs font-semibold text-(--text-muted)">{sourcesLabel}</span>
 
           <button
             type="button"
-            className="chat-send-button"
+            className={chatStyles.sendButton}
             onClick={onSend}
             disabled={isSending || !value.trim()}
             aria-label={isSending ? 'Enviando mensagem' : 'Enviar mensagem'}

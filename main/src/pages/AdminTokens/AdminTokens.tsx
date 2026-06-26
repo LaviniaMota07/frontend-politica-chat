@@ -1,475 +1,521 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
+  CheckCircle2,
   Coins,
   Database,
+  Edit3,
   Plus,
   Search,
-  TrendingUp,
+  Trash2,
   Zap,
 } from 'lucide-react';
-import '../../styles/admin-users.css';
-import '../../styles/admin-tokens.css';
-
-type AiProvider = 'GPT' | 'Claude' | 'Gemini';
-
-type ApiKeyUsageRecord = {
-  id: number;
-  provider: AiProvider;
-  apiKeyName: string;
-  apiKeyPreview: string;
-  tokenLimit: number;
-  tokens: number;
-  date: string;
-  dateValue: string;
-};
+import { useFetch } from '../../hooks/useFetch';
+import {
+  type AiKeyItem,
+  type BackendModelIa,
+  type BackendModelIaKey,
+  mapBackendModelKey,
+} from '../../services/adminApi';
+import { AdminStatsGrid } from '../../components/admin/AdminStatsGrid';
+import { AdminTable } from '../../components/admin/AdminTable';
+import { AdminPagination } from '../../components/admin/AdminPagination';
+import { AdminModal } from '../../components/admin/AdminModal';
+import { adminStyles, buttonStyles, formStyles, modalStyles } from '../../utils/tailwindStyles';
+import { useModelForm } from '../../hooks/forms/useModelForm';
+import { useCreateKeyForm, useUpdateKeyForm } from '../../hooks/forms/useKeyForm';
+import type { CreateModelFormData, CreateKeyFormData, UpdateKeyFormData } from '../../validation/admin.schema';
 
 const TOKENS_PER_PAGE = 4;
-
-const apiKeyUsageRecords: ApiKeyUsageRecord[] = [
-  {
-    id: 1,
-    provider: 'GPT',
-    apiKeyName: 'GPT Produção',
-    apiKeyPreview: 'sk-prod-****-8A21',
-    tokenLimit: 4000000,
-    tokens: 2864000,
-    date: '10 Out 2026, 14:35',
-    dateValue: '2026-10-10T14:35:00',
-  },
-  {
-    id: 2,
-    provider: 'Claude',
-    apiKeyName: 'Claude Jurídico',
-    apiKeyPreview: 'sk-ant-****-4F19',
-    tokenLimit: 3000000,
-    tokens: 2152800,
-    date: '10 Out 2026, 11:20',
-    dateValue: '2026-10-10T11:20:00',
-  },
-  {
-    id: 3,
-    provider: 'GPT',
-    apiKeyName: 'GPT Homologação',
-    apiKeyPreview: 'sk-hml-****-72BC',
-    tokenLimit: 1500000,
-    tokens: 996500,
-    date: '09 Out 2026, 17:05',
-    dateValue: '2026-10-09T17:05:00',
-  },
-  {
-    id: 4,
-    provider: 'Gemini',
-    apiKeyName: 'Gemini Pesquisa',
-    apiKeyPreview: 'gm-****-91DA',
-    tokenLimit: 1000000,
-    tokens: 584200,
-    date: '09 Out 2026, 09:45',
-    dateValue: '2026-10-09T09:45:00',
-  },
-  {
-    id: 5,
-    provider: 'Claude',
-    apiKeyName: 'Claude Atendimento',
-    apiKeyPreview: 'sk-ant-****-7B33',
-    tokenLimit: 2000000,
-    tokens: 743900,
-    date: '08 Out 2026, 16:10',
-    dateValue: '2026-10-08T16:10:00',
-  },
-  {
-    id: 6,
-    provider: 'GPT',
-    apiKeyName: 'GPT Relatórios',
-    apiKeyPreview: 'sk-rpt-****-2C88',
-    tokenLimit: 2500000,
-    tokens: 1320800,
-    date: '08 Out 2026, 10:25',
-    dateValue: '2026-10-08T10:25:00',
-  },
-  {
-    id: 7,
-    provider: 'Gemini',
-    apiKeyName: 'Gemini Documentos',
-    apiKeyPreview: 'gm-****-45FA',
-    tokenLimit: 1200000,
-    tokens: 412600,
-    date: '07 Out 2026, 13:40',
-    dateValue: '2026-10-07T13:40:00',
-  },
-  {
-    id: 8,
-    provider: 'Claude',
-    apiKeyName: 'Claude Auditoria',
-    apiKeyPreview: 'sk-ant-****-9D12',
-    tokenLimit: 1800000,
-    tokens: 879300,
-    date: '07 Out 2026, 08:55',
-    dateValue: '2026-10-07T08:55:00',
-  },
-];
-
-const totalTokens = 10000000;
-const usedTokens = 6450000;
 
 function formatTokens(value: number) {
   return new Intl.NumberFormat('pt-BR').format(value);
 }
 
 export default function AdminTokens() {
+  const { get, post, patch, del, loading } = useFetch();
+  const [models, setModels] = useState<BackendModelIa[]>([]);
+  const [keys, setKeys] = useState<AiKeyItem[]>([]);
   const [search, setSearch] = useState('');
-  const [periodFilter, setPeriodFilter] = useState('15 dias');
-  const [customPeriod, setCustomPeriod] = useState({ start: '', end: '' });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [apiProvider, setApiProvider] = useState<AiProvider>('GPT');
-  const [apiKey, setApiKey] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const remainingTokens = totalTokens - usedTokens;
-  const usagePercent = (usedTokens / totalTokens) * 100;
-  const dailyAverage = Math.round(usedTokens / 15);
-  const estimatedDaysLeft = Math.max(1, Math.floor(remainingTokens / dailyAverage));
+  const [isModelModalOpen, setIsModelModalOpen] = useState(false);
+  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
+  const [editingKey, setEditingKey] = useState<AiKeyItem | null>(null);
 
-  const topProvider = useMemo(() => {
-    const usageByProvider = apiKeyUsageRecords.reduce<Record<string, number>>((acc, record) => {
-      acc[record.provider] = (acc[record.provider] ?? 0) + record.tokens;
-      return acc;
-    }, {});
+  const modelForm = useModelForm();
+  const {
+    register: registerModel,
+    handleSubmit: handleModelSubmit,
+    formState: { errors: modelErrors },
+    reset: resetModelForm,
+  } = modelForm;
 
-    return Object.entries(usageByProvider).sort((first, second) => second[1] - first[1])[0]?.[0] ?? 'Sem dados';
-  }, []);
+  const [defaultModelId, setDefaultModelId] = useState('');
+  const keyForm = useCreateKeyForm(defaultModelId);
+  const {
+    register: registerKey,
+    handleSubmit: handleKeySubmit,
+    formState: { errors: keyErrors },
+    reset: resetKeyForm,
+    setValue: setKeyValue,
+  } = keyForm;
 
-  useEffect(() => {
-    const loadingTimer = window.setTimeout(() => setIsLoading(false), 450);
-    return () => window.clearTimeout(loadingTimer);
-  }, []);
+  const updateKeyForm = useUpdateKeyForm();
+  const {
+    register: registerUpdateKey,
+    handleSubmit: handleUpdateKeySubmit,
+    formState: { errors: updateKeyErrors },
+    reset: resetUpdateKeyForm,
+  } = updateKeyForm;
 
-  const filteredRecords = useMemo(() => {
-    const latestRecordDate = Math.max(...apiKeyUsageRecords.map((record) => new Date(record.dateValue).getTime()));
-    const periodStartDate = new Date(latestRecordDate);
+  const loadTokens = useCallback(async () => {
+    setIsLoading(true);
+    const modelRows = await get('/model-ia') as BackendModelIa[] | null;
 
-    if (periodFilter === '7 dias') {
-      periodStartDate.setDate(periodStartDate.getDate() - 6);
-    } else if (periodFilter === '15 dias') {
-      periodStartDate.setDate(periodStartDate.getDate() - 14);
-    } else if (periodFilter === '30 dias') {
-      periodStartDate.setDate(periodStartDate.getDate() - 29);
+    if (!modelRows) {
+      setIsLoading(false);
+      return;
     }
 
-    return apiKeyUsageRecords
-      .filter((record) => {
-        const searchValue = search.toLowerCase();
-        const recordDate = new Date(record.dateValue);
-        const matchesSearch =
-          record.provider.toLowerCase().includes(searchValue) ||
-          record.apiKeyName.toLowerCase().includes(searchValue) ||
-          record.apiKeyPreview.toLowerCase().includes(searchValue);
+    const keyGroups = await Promise.all(
+      modelRows.map(async (model) => {
+        const modelKeys = await get(`/model-ia-key/${model.modelIaId}`) as BackendModelIaKey[] | null;
+        return (modelKeys ?? []).map((key) => mapBackendModelKey(key, model.modelNm));
+      }),
+    );
 
-        const matchesPeriod =
-          periodFilter === 'personalizado'
-            ? (!customPeriod.start || recordDate >= new Date(customPeriod.start)) &&
-              (!customPeriod.end || recordDate <= new Date(customPeriod.end))
-            : recordDate >= periodStartDate;
+    setModels(modelRows);
+    setKeys(keyGroups.flat());
 
-        return matchesSearch && matchesPeriod;
-      })
-      .sort((firstRecord, secondRecord) => secondRecord.tokens - firstRecord.tokens);
-  }, [search, periodFilter, customPeriod]);
+    const firstId = modelRows[0]?.modelIaId.toString() ?? '';
+    setDefaultModelId((current) => current || firstId);
+    setKeyValue('modelIaId', firstId);
+    setIsLoading(false);
+  }, [get, setKeyValue]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / TOKENS_PER_PAGE));
+  useEffect(() => {
+    queueMicrotask(() => {
+      void loadTokens();
+    });
+  }, [loadTokens]);
+
+  const totalConfiguredTokens = useMemo(
+    () => keys.reduce((total, key) => total + key.qtnToken, 0),
+    [keys],
+  );
+  const activeKeys = keys.filter((key) => key.active).length;
+  const averageTokensPerKey = activeKeys > 0 ? Math.round(totalConfiguredTokens / activeKeys) : 0;
+
+  const filteredKeys = useMemo(() => {
+    const searchValue = search.toLowerCase();
+
+    return keys.filter((key) => key.modelName.toLowerCase().includes(searchValue));
+  }, [keys, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredKeys.length / TOKENS_PER_PAGE));
   const pageStart = (currentPage - 1) * TOKENS_PER_PAGE;
   const pageEnd = pageStart + TOKENS_PER_PAGE;
-  const paginatedRecords = filteredRecords.slice(pageStart, pageEnd);
-  const firstVisibleRecord = filteredRecords.length === 0 ? 0 : pageStart + 1;
-  const lastVisibleRecord = Math.min(pageEnd, filteredRecords.length);
+  const paginatedKeys = filteredKeys.slice(pageStart, pageEnd);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [search, periodFilter, customPeriod]);
+    queueMicrotask(() => setCurrentPage(1));
+  }, [search]);
 
   useEffect(() => {
-    setCurrentPage((page) => Math.min(page, totalPages));
+    queueMicrotask(() => setCurrentPage((page) => Math.min(page, totalPages)));
   }, [totalPages]);
 
-  function closeAddModal() {
-    setIsAddModalOpen(false);
-    setApiProvider('GPT');
-    setApiKey('');
+  function closeModelModal() {
+    setIsModelModalOpen(false);
+    resetModelForm();
   }
 
-  function handleAddApiKey(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    closeAddModal();
+  function closeKeyModal() {
+    setIsKeyModalOpen(false);
+    resetKeyForm();
+  }
+
+  function closeEditKeyModal() {
+    setEditingKey(null);
+    resetUpdateKeyForm();
+  }
+
+  async function handleCreateModel(data: CreateModelFormData) {
+    const response = await post('/model-ia', {
+      body: {
+        modelNm: data.modelNm.trim(),
+        chatModel: data.chatModel.trim(),
+      },
+      successAlert: {
+        title: 'Modelo criado',
+        message: 'O modelo de IA foi cadastrado no backend.',
+      },
+    }) as BackendModelIa | null;
+
+    if (response) {
+      closeModelModal();
+      await loadTokens();
+    }
+  }
+
+  async function handleCreateKey(data: CreateKeyFormData) {
+    const response = await post('/model-ia-key', {
+      body: {
+        modelIaId: Number(data.modelIaId),
+        modelKey: data.modelKey.trim(),
+        qtnToken: Number(data.qtnToken),
+      },
+      successAlert: {
+        title: 'Chave criada',
+        message: 'A chave de IA foi cadastrada no backend.',
+      },
+    }) as BackendModelIaKey | null;
+
+    if (response) {
+      closeKeyModal();
+      await loadTokens();
+    }
+  }
+
+  async function handleUpdateKey(data: UpdateKeyFormData) {
+    if (!editingKey) {
+      return;
+    }
+
+    const response = await patch('/model-ia-key', {
+      body: {
+        modelIaId: editingKey.modelIaId,
+        modelKey: editingKey.modelKey,
+        qtnToken: Number(data.qtnToken),
+        active: true,
+      },
+      successAlert: {
+        title: 'Chave atualizada',
+        message: 'A franquia de tokens foi salva no backend.',
+      },
+    }) as BackendModelIaKey | null;
+
+    if (response) {
+      closeEditKeyModal();
+      await loadTokens();
+    }
+  }
+
+  async function handleDeleteKey(key: AiKeyItem) {
+    const response = await del(`/model-ia-key/${key.modelIaId}/${key.modelKey}`, {
+      successAlert: {
+        title: 'Chave desativada',
+        message: 'A chave não aparecerá mais na lista ativa.',
+      },
+    });
+
+    if (response) {
+      await loadTokens();
+    }
+  }
+
+  async function handleDeleteModel(model: BackendModelIa) {
+    const response = await del(`/model-ia/${model.modelIaId}`, {
+      successAlert: {
+        title: 'Modelo desativado',
+        message: 'O modelo não aparecerá mais na lista ativa.',
+      },
+    });
+
+    if (response) {
+      await loadTokens();
+    }
+  }
+
+  async function handleActivateModel(model: BackendModelIa) {
+    const response = await patch(`/model-ia/${model.modelIaId}/activate`, {
+      successAlert: {
+        title: 'Modelo ativado',
+        message: 'O modelo voltou a aparecer na lista ativa.',
+      },
+    });
+
+    if (response) {
+      await loadTokens();
+    }
   }
 
   return (
-    <main className="admin-users-page admin-tokens-page">
-      <section className="admin-users-content tokens-content">
-        <header className="admin-users-header tokens-header">
+    <main className={adminStyles.page}>
+      <section className={adminStyles.content}>
+        <header className={adminStyles.header}>
           <div>
-            <h1>Gerenciamento de Tokens</h1>
-            <p>Monitore o consumo das APIs de IA por chave cadastrada.</p>
+            <h1 className={adminStyles.title}>Gerenciamento de Tokens</h1>
+            <p className={adminStyles.subtitle}>Administre modelos de IA e chaves geradas pelo backend.</p>
           </div>
 
-          <div className="header-actions">
+          <div className={adminStyles.headerActions}>
+            <button type="button" className={buttonStyles.secondary} onClick={() => setIsModelModalOpen(true)}>
+              <Plus size={16} /> Novo modelo
+            </button>
             <button
               type="button"
-              className="primary-btn token-primary-btn"
-              onClick={() => setIsAddModalOpen(true)}
+              className={buttonStyles.primary}
+              onClick={() => setIsKeyModalOpen(true)}
+              disabled={models.length === 0}
             >
-              <Plus size={16} />
-              Adicionar API Key
+              <Plus size={16} /> Nova chave
             </button>
           </div>
         </header>
 
-        <section className="tokens-stats-grid" aria-label="Resumo de tokens">
-          <article className="token-stat-card">
-            <div>
-              <span className="token-stat-label">Tokens Disponíveis (Mês)</span>
-              <strong className="token-stat-value">{formatTokens(totalTokens)}</strong>
-              <span className="token-stat-note">Limite máximo configurado na franquia</span>
-              <span className="token-stat-micro">
-                <CalendarDays size={12} />
-                Próxima renovação: 01 Nov 2026
-              </span>
-            </div>
-            <span className="token-stat-icon token-stat-icon-blue">
-              <Database size={17} />
-            </span>
-          </article>
+        <AdminStatsGrid
+          className="grid grid-cols-3 gap-4 max-[1000px]:grid-cols-1"
+          cards={[
+            {
+              label: 'Modelos Ativos',
+              value: models.length,
+              description: <span className="mt-2 block text-xs text-[var(--text-muted)]">Modelos retornados por /model-ia</span>,
+              icon: <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border-neutral)] bg-[var(--accent-soft)] text-[var(--accent-strong)]"><Database size={17} /></span>,
+            },
+            {
+              label: 'Tokens Configurados',
+              value: formatTokens(totalConfiguredTokens),
+              description: <span className="mt-2 inline-flex items-center gap-1 text-xs text-amber-700"><Zap size={13} /> Soma de qtnToken das chaves ativas</span>,
+              icon: <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700"><Zap size={17} /></span>,
+            },
+            {
+              label: 'Chaves Ativas',
+              value: activeKeys,
+              description: <span className="mt-2 inline-flex items-center gap-1 text-xs text-emerald-700"><Coins size={13} /> Média: {formatTokens(averageTokensPerKey)} tokens</span>,
+              icon: <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700"><Coins size={17} /></span>,
+            },
+          ]}
+        />
 
-          <article className="token-stat-card">
-            <div>
-              <span className="token-stat-label">Tokens Utilizados</span>
-              <strong className="token-stat-value">{formatTokens(usedTokens)}</strong>
-              <span className="token-stat-note token-stat-warning">
-                <TrendingUp size={13} />
-                {usagePercent.toFixed(1)}% do limite mensal consumido
-              </span>
-              <span className="token-stat-micro">Média diária: {formatTokens(dailyAverage)} tokens</span>
-              <span className="token-stat-micro">IA com maior uso no mês: {topProvider}</span>
-            </div>
-            <span className="token-stat-icon token-stat-icon-yellow">
-              <Zap size={17} />
-            </span>
-          </article>
+        <section className={adminStyles.section}>
+          <div className={adminStyles.sectionHeader}>
+            <h2 className={adminStyles.sectionTitle}>Modelos cadastrados</h2>
+          </div>
 
-          <article className="token-stat-card">
-            <div>
-              <span className="token-stat-label">Tokens Restantes</span>
-              <strong className="token-stat-value">{formatTokens(remainingTokens)}</strong>
-              <span className="token-stat-note token-stat-success">
-                <Coins size={13} />
-                Suficiente para ~15 dias de uso
-              </span>
-              <span className="token-stat-micro">
-                Esgotamento estimado: {estimatedDaysLeft} dias
-              </span>
-            </div>
-            <span className="token-stat-icon token-stat-icon-green">
-              <Coins size={17} />
-            </span>
-          </article>
+          <AdminTable
+            columns={['Modelo', 'Tokens gastos', 'Status', 'Ações']}
+            isLoading={isLoading}
+            loadingMessage="Carregando modelos..."
+            isEmpty={models.length === 0}
+            emptyMessage="Nenhum modelo cadastrado."
+          >
+            {models.map((model) => (
+              <tr key={model.modelIaId}>
+                <td className={adminStyles.td}>
+                  <div className={adminStyles.userCell}>
+                    <strong className={adminStyles.userName}>{model.modelNm}</strong>
+                    <span className={adminStyles.userEmail}>{model.chatModel}</span>
+                  </div>
+                </td>
+                <td className={adminStyles.td}>
+                  <strong className="font-bold text-amber-700">
+                    {formatTokens(Number(model.tokensSpent ?? 0))}
+                  </strong>
+                </td>
+                <td className={adminStyles.td}>
+                  <span className={model.active ? adminStyles.badgeActive : adminStyles.badgeBlocked}>
+                    {model.active ? 'Ativo' : 'Inativo'}
+                  </span>
+                </td>
+                <td className={adminStyles.td}>
+                  {model.active ? (
+                    <button type="button" className={buttonStyles.iconDanger} onClick={() => void handleDeleteModel(model)} title="Desativar modelo">
+                      <Trash2 size={16} />
+                    </button>
+                  ) : (
+                    <button type="button" className={buttonStyles.icon} onClick={() => void handleActivateModel(model)} title="Ativar modelo">
+                      <CheckCircle2 size={16} />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </AdminTable>
         </section>
 
-        <section className="token-details-section">
-          <div className="token-section-header token-details-header">
-            <h2>Consumo por API Key</h2>
+        <section className={adminStyles.section}>
+          <div className={adminStyles.sectionHeader}>
+            <h2 className={adminStyles.sectionTitle}>Chaves por modelo</h2>
 
-            <div className="token-table-controls">
-              <label className="token-search">
-                <Search size={17} />
+            <div>
+              <label className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={17} />
                 <input
+                  className={`${formStyles.input} min-w-[260px] pl-10`}
                   type="text"
-                  placeholder="Buscar por IA ou API key..."
+                  placeholder="Buscar por modelo..."
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                 />
               </label>
-
-              <select
-                className="token-filter-select"
-                value={periodFilter}
-                onChange={(event) => setPeriodFilter(event.target.value)}
-                aria-label="Filtrar por período"
-              >
-                <option value="7 dias">7 dias</option>
-                <option value="15 dias">15 dias</option>
-                <option value="30 dias">30 dias</option>
-                <option value="personalizado">Personalizado</option>
-              </select>
-
-              {periodFilter === 'personalizado' && (
-                <div className="token-custom-period">
-                  <input
-                    type="date"
-                    value={customPeriod.start}
-                    onChange={(event) => setCustomPeriod((current) => ({ ...current, start: event.target.value }))}
-                    aria-label="Data inicial"
-                  />
-                  <input
-                    type="date"
-                    value={customPeriod.end}
-                    onChange={(event) => setCustomPeriod((current) => ({ ...current, end: event.target.value }))}
-                    aria-label="Data final"
-                  />
-                </div>
-              )}
             </div>
           </div>
 
-          <div className="users-table-wrapper token-table-wrapper">
-            <table className="users-table token-table">
-              <thead>
-                <tr>
-                  <th>IA</th>
-                  <th>API Key</th>
-                  <th>Tokens consumidos</th>
-                  <th>Tokens da API Key</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {isLoading &&
-                  Array.from({ length: 4 }).map((_, index) => (
-                    <tr className="token-skeleton-row" key={`skeleton-${index}`}>
-                      <td colSpan={4}>
-                        <span />
-                      </td>
-                    </tr>
-                  ))}
-
-                {!isLoading && paginatedRecords.map((record) => (
-                  <tr key={record.id}>
-                    <td>
-                      <div className="user-cell">
-                        <strong className="user-name">{record.provider}</strong>
-                        <span className="user-email">Modelo de IA conectado</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="user-cell">
-                        <strong className="user-name">{record.apiKeyName}</strong>
-                        <span className="user-email">{record.apiKeyPreview}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <strong className="token-count">{formatTokens(record.tokens)}</strong>
-                    </td>
-                    <td>{formatTokens(record.tokenLimit)}</td>
-                  </tr>
-                ))}
-
-                {!isLoading && filteredRecords.length === 0 && (
-                  <tr>
-                    <td className="users-empty-cell" colSpan={4}>
-                      Nenhum registro encontrado.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <AdminTable
+            columns={['IA', 'Tokens da chave', 'Ações']}
+            isLoading={isLoading}
+            loadingMessage="Carregando chaves..."
+            isEmpty={filteredKeys.length === 0}
+            emptyMessage="Nenhuma chave encontrada."
+          >
+            {paginatedKeys.map((key) => (
+              <tr key={key.id}>
+                <td className={adminStyles.td}>
+                  <div className={adminStyles.userCell}>
+                    <strong className={adminStyles.userName}>{key.modelName}</strong>
+                    <span className={adminStyles.userEmail}>Modelo #{key.modelIaId}</span>
+                  </div>
+                </td>
+                <td className={adminStyles.td}><strong className="font-bold text-amber-700">{formatTokens(key.qtnToken)}</strong></td>
+                <td className={adminStyles.td}>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className={buttonStyles.icon}
+                      onClick={() => {
+                        setEditingKey(key);
+                        resetUpdateKeyForm({ qtnToken: String(key.qtnToken) });
+                      }}
+                      title="Editar tokens"
+                    >
+                      <Edit3 size={16} />
+                    </button>
+                    <button type="button" className={buttonStyles.iconDanger} onClick={() => void handleDeleteKey(key)} title="Desativar chave">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </AdminTable>
 
           {!isLoading && (
-            <div className="table-pagination" aria-label="Paginação de tokens">
-              <span className="pagination-summary">
-                Mostrando {firstVisibleRecord}-{lastVisibleRecord} de {filteredRecords.length} registros
-              </span>
-
-              <div className="pagination-actions">
-                <button
-                  type="button"
-                  className="pagination-btn"
-                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                  disabled={currentPage === 1}
-                  aria-label="Página anterior"
-                  title="Página anterior"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-
-                <span className="pagination-page">
-                  Página {currentPage} de {totalPages}
-                </span>
-
-                <button
-                  type="button"
-                  className="pagination-btn"
-                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                  disabled={currentPage === totalPages}
-                  aria-label="Próxima página"
-                  title="Próxima página"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
+            <AdminPagination
+              currentPage={currentPage}
+              totalItems={filteredKeys.length}
+              perPage={TOKENS_PER_PAGE}
+              itemLabel="chaves"
+              onChange={setCurrentPage}
+              ariaLabel="Paginação de tokens"
+            />
           )}
         </section>
       </section>
 
-      {isAddModalOpen && (
-        <div className="role-modal-backdrop" role="presentation">
-          <form
-            className="role-modal token-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="token-modal-title"
-            onSubmit={handleAddApiKey}
-          >
-            <header className="role-modal-header">
-              <div>
-                <h2 id="token-modal-title">Adicionar API Key</h2>
-                <p>Escolha a IA utilizada e informe a chave de integração.</p>
-              </div>
-              <button
-                type="button"
-                className="role-modal-close"
-                onClick={closeAddModal}
-                aria-label="Fechar"
-              >
-                x
-              </button>
-            </header>
-
-            <div className="invite-form-grid">
-              <label className="invite-field">
-                <span>IA</span>
-                <select value={apiProvider} onChange={(event) => setApiProvider(event.target.value as AiProvider)} required>
-                  <option value="GPT">GPT</option>
-                  <option value="Claude">Claude</option>
-                  <option value="Gemini">Gemini</option>
-                </select>
-              </label>
-
-              <label className="invite-field">
-                <span>API Key</span>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  placeholder="Cole a chave da API"
-                  required
-                />
-              </label>
-            </div>
-
-            <footer className="role-modal-actions">
-              <button type="button" className="secondary-btn" onClick={closeAddModal}>
-                Cancelar
-              </button>
-              <button type="submit" className="primary-btn">
-                Salvar
-              </button>
-            </footer>
-          </form>
+      <AdminModal
+        open={isModelModalOpen}
+        as="form"
+        title="Novo modelo de IA"
+        titleId="model-modal-title"
+        description="Cadastre o nome do modelo usado pelo backend."
+        onClose={closeModelModal}
+        onSubmit={handleModelSubmit(handleCreateModel)}
+        actions={
+          <>
+            <button type="button" className={buttonStyles.secondary} onClick={closeModelModal}>Cancelar</button>
+            <button type="submit" className={buttonStyles.primary} disabled={loading}>Salvar</button>
+          </>
+        }
+      >
+        <div className={`${modalStyles.body} ${adminStyles.formGrid}`}>
+          <label className={formStyles.label}>
+            <span>Nome do modelo</span>
+            <input
+              className={formStyles.input}
+              {...registerModel('modelNm')}
+            />
+            {modelErrors.modelNm && <p className={formStyles.error}>{modelErrors.modelNm.message}</p>}
+          </label>
+          <label className={formStyles.label}>
+            <span>Modelo de chat</span>
+            <input
+              className={formStyles.input}
+              placeholder="Ex.: gpt-4o-mini"
+              {...registerModel('chatModel')}
+            />
+            {modelErrors.chatModel && <p className={formStyles.error}>{modelErrors.chatModel.message}</p>}
+          </label>
         </div>
-      )}
+      </AdminModal>
+
+      <AdminModal
+        open={isKeyModalOpen}
+        as="form"
+        title="Nova chave de IA"
+        titleId="key-modal-title"
+        description="O backend gera a chave e armazena a quantidade de tokens."
+        onClose={closeKeyModal}
+        onSubmit={handleKeySubmit(handleCreateKey)}
+        actions={
+          <>
+            <button type="button" className={buttonStyles.secondary} onClick={closeKeyModal}>Cancelar</button>
+            <button type="submit" className={buttonStyles.primary} disabled={loading}>Salvar</button>
+          </>
+        }
+      >
+        <div className={`${modalStyles.body} ${adminStyles.formGrid}`}>
+          <label className={formStyles.label}>
+            <span>Modelo</span>
+            <select className={formStyles.select} {...registerKey('modelIaId')}>
+              {models.map((model) => (
+                <option key={model.modelIaId} value={model.modelIaId}>{model.modelNm}</option>
+              ))}
+            </select>
+            {keyErrors.modelIaId && <p className={formStyles.error}>{keyErrors.modelIaId.message}</p>}
+          </label>
+          <label className={formStyles.label}>
+            <span>Chave de IA</span>
+            <input
+              className={formStyles.input}
+              type="password"
+              autoComplete="off"
+              {...registerKey('modelKey')}
+            />
+            {keyErrors.modelKey && <p className={formStyles.error}>{keyErrors.modelKey.message}</p>}
+          </label>
+          <label className={formStyles.label}>
+            <span>Quantidade de tokens</span>
+            <input
+              className={formStyles.input}
+              type="number"
+              min={1}
+              {...registerKey('qtnToken')}
+            />
+            {keyErrors.qtnToken && <p className={formStyles.error}>{keyErrors.qtnToken.message}</p>}
+          </label>
+        </div>
+      </AdminModal>
+
+      <AdminModal
+        open={Boolean(editingKey)}
+        as="form"
+        title="Editar tokens da chave"
+        titleId="edit-key-modal-title"
+        description={editingKey ? editingKey.modelName : undefined}
+        onClose={closeEditKeyModal}
+        onSubmit={handleUpdateKeySubmit(handleUpdateKey)}
+        actions={
+          <>
+            <button type="button" className={buttonStyles.secondary} onClick={closeEditKeyModal}>Cancelar</button>
+            <button type="submit" className={buttonStyles.primary} disabled={loading}>Salvar</button>
+          </>
+        }
+      >
+        <div className={`${modalStyles.body} ${adminStyles.formGrid}`}>
+          <label className={formStyles.label}>
+            <span>Quantidade de tokens</span>
+            <input
+              className={formStyles.input}
+              type="number"
+              min={1}
+              {...registerUpdateKey('qtnToken')}
+            />
+            {updateKeyErrors.qtnToken && <p className={formStyles.error}>{updateKeyErrors.qtnToken.message}</p>}
+          </label>
+        </div>
+      </AdminModal>
     </main>
   );
 }

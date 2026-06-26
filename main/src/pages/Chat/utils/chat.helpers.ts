@@ -22,3 +22,7 @@ export function formatTime(dateString: string) {
     minute: '2-digit',
   });
 }
+
+export function createClientMessageId() {
+  return `client-message-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}

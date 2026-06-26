@@ -12,6 +12,11 @@ export function useScrolling<T extends HTMLElement>(
 ) {
     const { threshold = 50 } = options;
     const isLoading = useRef(false);
+    const onScrollEndRef = useRef(onScrollEnd);
+
+    useEffect(() => {
+        onScrollEndRef.current = onScrollEnd;
+    });
 
     useEffect(() => {
         const element = elementRef.current;
@@ -26,7 +31,7 @@ export function useScrolling<T extends HTMLElement>(
             if (distanceToBottom <= threshold) {
                 isLoading.current = true;
                 try {
-                    await onScrollEnd();
+                    await onScrollEndRef.current();
                 } finally {
                     isLoading.current = false;
                 }
@@ -38,5 +43,5 @@ export function useScrolling<T extends HTMLElement>(
         return () => {
             element.removeEventListener('scroll', handleScroll);
         };
-    }, [elementRef, onScrollEnd, threshold]);
+    }, [elementRef, threshold]);
 }

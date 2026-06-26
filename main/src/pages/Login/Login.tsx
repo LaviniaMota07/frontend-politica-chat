@@ -1,25 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, LockKeyhole, Mail, ShieldCheck, X, Send, Loader2 } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Mail, Send, ShieldCheck, X, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLoginForm, type LoginFormData } from '../../hooks/forms/useLoginForm';
-import { useRequestAccessForm, type RequestAccessFormData } from '../../hooks/forms/useRequestAccessForm';
+import { useRequestAccessForm } from '../../hooks/forms/useRequestAccessForm';
 import { useFetch } from '../../hooks/useFetch';
-import './login.css';
-
-interface LoginResponse {
-  user: {
-    name: string;
-    email: string;
-    userTypeId: '1' | '2';
-  };
-}
+import { formStyles } from '../../utils/tailwindStyles';
+import type { LoginResponse } from '../../services/authApi';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [isRequestOpen, setIsRequestOpen] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const requestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (requestTimerRef.current !== null) clearTimeout(requestTimerRef.current);
+    };
+  }, []);
 
   const { register, handleSubmit, formState: { errors } } = useLoginForm();
   const { post, loading } = useFetch<LoginResponse>();
@@ -37,17 +38,19 @@ export default function Login() {
     });
 
     if (response?.user) {
+      const userTypeId = String(response.user.typeUserId) as '1' | '2';
       login({
         ...response.user,
-        role: response.user.userTypeId,
+        role: userTypeId,
+        userTypeId,
       });
       navigate('/chat');
     }
   };
 
-  const onRequestSubmit = (_data: RequestAccessFormData) => {
+  const onRequestSubmit = () => {
     setRequestSent(true);
-    setTimeout(() => {
+    requestTimerRef.current = setTimeout(() => {
       setIsRequestOpen(false);
       setRequestSent(false);
       resetRequestForm();
@@ -61,132 +64,193 @@ export default function Login() {
   }
 
   return (
-    <main className="login-page">
-      <section className="login-intro" aria-label="Apresentação">
-        <div className="login-brand">
-          <span className="login-brand-icon">
-            <ShieldCheck size={18} strokeWidth={1.9} />
+    <main className="flex min-h-screen bg-[var(--bg-base)]">
+      {/* Left column — institutional panel */}
+      <aside className="hidden w-[420px] shrink-0 flex-col justify-between bg-[var(--sidebar-bg)] p-12 lg:flex">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--accent)] text-[var(--text-inverse)]">
+            <ShieldCheck size={20} strokeWidth={1.8} />
           </span>
-          <div>
-            <strong>Assistente de Políticas</strong>
-            <span>Baseado em normas internas</span>
+          <span className="font-[var(--heading)] text-sm font-extrabold tracking-[-0.025em] text-[var(--text-inverse)]">
+            NormaHub
+          </span>
+        </div>
+
+        <div>
+          <h1 className="text-white text-[2.2rem] font-extrabold leading-[1.15] tracking-[-0.045em]">
+            Consulte normas.<br />Entenda processos.<br />Decida com confiança.
+          </h1>
+          <ul className="mt-8 flex flex-col gap-3">
+            {[
+              'Acesso às políticas da empresa em segundos',
+              'Respostas com referência direta aos documentos',
+              'Interface simples, sem necessidade de treinamento',
+            ].map((benefit) => (
+              <li key={benefit} className="flex items-start gap-3 text-sm leading-6 text-[var(--text-inverse)]/68">
+                <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]" />
+                {benefit}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="text-xs text-[var(--text-inverse)]/30">
+          © {new Date().getFullYear()} NormaHub | Starian | Unit | Squad 8
+        </p>
+      </aside>
+
+      {/* Right column — login card */}
+      <div className="flex flex-1 items-center justify-center px-5 py-12">
+        <section className="w-full max-w-[420px] animate-fade-slide-up" aria-label="Entrar">
+          {/* Mobile brand */}
+          <div className="mb-8 flex items-center gap-3 lg:hidden">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent)] text-[var(--text-inverse)]">
+              <ShieldCheck size={18} strokeWidth={1.8} />
+            </span>
+            <span className="font-[var(--heading)] text-sm font-extrabold tracking-[-0.025em] text-[var(--text-primary)]">
+              Assistente de Políticas
+            </span>
           </div>
-        </div>
-        <div className="login-pill">
-          <LockKeyhole size={15} strokeWidth={1.8} />
-          Acesso seguro para colaboradores
-        </div>
-        <div className="login-copy">
-          <h1>Consulte políticas internas com clareza e segurança.</h1>
-          <p>
-            Entre no ambiente adequado para acessar respostas orientadas por
-            documentos, normas e processos oficiais da empresa.
-          </p>
-        </div>
-      </section>
 
-      <section className="login-panel" aria-label="Entrar">
-        <form className="login-card" onSubmit={handleSubmit(onSubmit)}>
-          <header className="login-card-header">
-            <h2>Entrar</h2>
-            <p>Acesse sua conta corporativa para continuar para o assistente.</p>
-          </header>
-          <label className="login-field">
-            <span>E-mail corporativo</span>
-            <div className="login-input-shell">
-              <input type="email" placeholder="nome@empresa.com" {...register('email')} />
-              <Mail size={17} strokeWidth={1.8} />
-            </div>
-            {errors.email && <span className="login-error-message">{errors.email.message}</span>}
-          </label>
-          <label className="login-field">
-            <span>Senha</span>
-            <div className="login-input-shell">
-              <input type="password" placeholder="Digite sua senha" {...register('password')} />
-              <LockKeyhole size={17} strokeWidth={1.8} />
-            </div>
-            {errors.password && <span className="login-error-message">{errors.password.message}</span>}
-          </label>
-          <button type="submit" className="login-submit" disabled={loading}>
-            {loading ? (
-              <>
-                Entrando...
-                <Loader2 size={17} strokeWidth={1.9} className="login-spinner" />
-              </>
-            ) : (
-              <>
-                Entrar no assistente
-                <ArrowRight size={17} strokeWidth={1.9} />
-              </>
-            )}
-          </button>
+          <div className="rounded-[20px] border border-[var(--border-neutral)] bg-[var(--bg-elevated)] p-8 shadow-[0_18px_50px_rgba(31,29,25,0.1)]">
+            <h2 className="font-[var(--heading)] text-[1.65rem] font-extrabold tracking-[-0.045em] text-[var(--text-primary)]">
+              Acesse as políticas da sua empresa.
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+              Consulte normas, procedimentos e documentos internos em uma conversa simples.
+            </p>
 
-          <div className="login-footer-links">
-            <button type="button" className="login-link">Esqueci minha senha</button>
-            <button type="button" className="login-link" onClick={() => setIsRequestOpen(true)}>
-              Solicitar Acesso
-            </button>
+            <form className="mt-7 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">E-mail corporativo</span>
+                <div className="relative">
+                  <input
+                    className={`${formStyles.input} pr-11`}
+                    type="email"
+                    placeholder="nome@empresa.com"
+                    {...register('email')}
+                  />
+                  <Mail className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} strokeWidth={1.8} />
+                </div>
+                {errors.email && <span className={formStyles.error}>{errors.email.message}</span>}
+              </label>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Senha</span>
+                <div className="relative">
+                  <input
+                    className={`${formStyles.input} pr-12`}
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Digite sua senha"
+                    {...register('password')}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[var(--text-muted)] transition hover:bg-[var(--accent-soft)] hover:text-[var(--accent-strong)]"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  >
+                    {showPassword ? <EyeOff size={15} strokeWidth={1.8} /> : <Eye size={15} strokeWidth={1.8} />}
+                  </button>
+                </div>
+                {errors.password && <span className={formStyles.error}>{errors.password.message}</span>}
+              </label>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--accent)] text-sm font-bold text-[var(--text-inverse)] shadow-[0_10px_24px_rgba(168,101,53,0.18)] transition duration-200 hover:-translate-y-px hover:bg-[var(--accent-strong)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+              >
+                {loading ? (
+                  <>Entrando… <Loader2 size={16} strokeWidth={1.9} className="animate-spin" /></>
+                ) : (
+                  <>Entrar <ArrowRight size={16} strokeWidth={2} /></>
+                )}
+              </button>
+            </form>
+
+            <p className="mt-5 text-center text-sm text-[var(--text-muted)]">
+              Não tem acesso?{' '}
+              <button
+                type="button"
+                className="font-bold text-[var(--accent-strong)] underline-offset-4 transition hover:underline"
+                onClick={() => setIsRequestOpen(true)}
+              >
+                Solicitar acesso
+              </button>
+            </p>
           </div>
-        </form>
-      </section>
+        </section>
+      </div>
 
-      {/* Modal Solicitar Acesso */}
+      {/* Request access modal */}
       {isRequestOpen && (
-        <div className="login-modal-backdrop" onClick={handleCloseRequest}>
-          <div className="login-modal" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(31,29,25,0.52)] p-4"
+          onClick={handleCloseRequest}
+        >
+          <div
+            className="relative w-full max-w-md overflow-hidden rounded-[22px] border border-[var(--border-neutral)] border-t-[3px] border-t-[var(--accent)] bg-[var(--bg-elevated)] p-7 shadow-[0_28px_80px_rgba(31,29,25,0.24)]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
-              className="login-modal-close"
+              className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-[var(--text-muted)] transition hover:border-[var(--border-neutral)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent-strong)]"
               onClick={handleCloseRequest}
               aria-label="Fechar"
             >
-              <X size={16} />
+              <X size={15} />
             </button>
 
             {requestSent ? (
-              <div className="login-modal-success">
-                <p>Solicitação enviada com sucesso!</p>
-                <span>Em breve você receberá um retorno.</span>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center">
+                <p className="font-bold text-emerald-800">Solicitação enviada com sucesso!</p>
+                <span className="mt-2 block text-sm text-emerald-700">Em breve você receberá um retorno.</span>
               </div>
             ) : (
               <form onSubmit={handleRequestSubmitHook(onRequestSubmit)}>
-                <h2 className="login-modal-title">Solicitar acesso</h2>
-                <p className="login-modal-desc">
+                <h2 className="font-[var(--heading)] text-2xl font-extrabold tracking-[-0.04em] text-[var(--text-primary)]">
+                  Solicitar acesso
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
                   Preencha os dados abaixo para enviar sua solicitação de acesso à plataforma.
                 </p>
 
-                <label className="login-field">
-                  <span>Nome completo</span>
-                  <div className="login-input-shell">
-                    <input
-                      type="text"
-                      placeholder="Digite seu nome completo"
-                      {...registerRequest('name')}
-                    />
-                  </div>
+                <label className="mt-6 flex flex-col gap-1.5">
+                  <span className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Nome completo</span>
+                  <input
+                    className={formStyles.input}
+                    type="text"
+                    placeholder="Digite seu nome completo"
+                    {...registerRequest('name')}
+                  />
                   {requestErrors.name && (
-                    <span className="login-error-message">{requestErrors.name.message}</span>
+                    <span className={formStyles.error}>{requestErrors.name.message}</span>
                   )}
                 </label>
 
-                <label className="login-field" style={{ marginTop: '14px' }}>
-                  <span>E-mail corporativo</span>
-                  <div className="login-input-shell">
+                <label className="mt-4 flex flex-col gap-1.5">
+                  <span className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">E-mail corporativo</span>
+                  <div className="relative">
                     <input
+                      className={`${formStyles.input} pr-11`}
                       type="email"
                       placeholder="nome@empresa.com"
                       {...registerRequest('email')}
                     />
-                    <Mail size={17} strokeWidth={1.8} />
+                    <Mail className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} strokeWidth={1.8} />
                   </div>
                   {requestErrors.email && (
-                    <span className="login-error-message">{requestErrors.email.message}</span>
+                    <span className={formStyles.error}>{requestErrors.email.message}</span>
                   )}
                 </label>
 
-                <button type="submit" className="login-submit" style={{ marginTop: '22px' }}>
+                <button
+                  type="submit"
+                  className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--accent)] text-sm font-bold text-[var(--text-inverse)] shadow-[0_10px_24px_rgba(168,101,53,0.18)] transition hover:-translate-y-px hover:bg-[var(--accent-strong)]"
+                >
                   Enviar solicitação
-                  <Send size={15} strokeWidth={1.9} />
+                  <Send size={14} strokeWidth={1.9} />
                 </button>
               </form>
             )}

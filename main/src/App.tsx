@@ -1,4 +1,3 @@
-import './App.css';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
 import AuthLayout from './layouts/AuthLayout';
@@ -9,10 +8,13 @@ import Chat from './pages/Chat/Chat';
 import ChatRoom from './pages/Chat/ChatRoom';
 import AdminUsers from './pages/AdminUsers/AdminUsers';
 import AdminDocuments from './pages/AdminDocuments/AdminDocuments';
+import AdminDocumentDetail from './pages/AdminDocuments/AdminDocumentDetail';
 import AdminDepartments, { AdminSystems } from './pages/AdminCatalogs/AdminCatalogs';
+import AdminPermissionGroups from './pages/AdminPermissionGroups/AdminPermissionGroups';
 import AdminTokens from './pages/AdminTokens/AdminTokens';
 import ProfileEdit from './pages/ProfileEdit/ProfileEdit';
 import ProtectedRoute from './components/ProtectedRoute';
+import { ChatHistoryProvider } from './contexts/ChatHistoryContext';
 
 function App() {
   return (
@@ -26,7 +28,9 @@ function App() {
         path="/"
         element={
           <ProtectedRoute>
-            <DashboardLayout />
+            <ChatHistoryProvider>
+              <DashboardLayout />
+            </ChatHistoryProvider>
           </ProtectedRoute>
         }
       >
@@ -58,7 +62,7 @@ function App() {
         <Route
           path="admin/users"
           element={
-            <ProtectedRoute allowedRoles={['2']}>
+            <ProtectedRoute allowedRoles={['1']}>
               <AdminUsers />
             </ProtectedRoute>
           }
@@ -66,8 +70,16 @@ function App() {
         <Route
           path="admin/documents"
           element={
-            <ProtectedRoute allowedRoles={['2']}>
+            <ProtectedRoute allowedRoles={['1']}>
               <AdminDocuments />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/documents/:documentId"
+          element={
+            <ProtectedRoute allowedRoles={['1']}>
+              <AdminDocumentDetail />
             </ProtectedRoute>
           }
         />
@@ -78,7 +90,7 @@ function App() {
         <Route
           path="admin/departments"
           element={
-            <ProtectedRoute allowedRoles={['2']}>
+            <ProtectedRoute allowedRoles={['1']}>
               <AdminDepartments />
             </ProtectedRoute>
           }
@@ -86,15 +98,23 @@ function App() {
         <Route
           path="admin/systems"
           element={
-            <ProtectedRoute allowedRoles={['2']}>
+            <ProtectedRoute allowedRoles={['1']}>
               <AdminSystems />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/permission-groups"
+          element={
+            <ProtectedRoute allowedRoles={['1']}>
+              <AdminPermissionGroups />
             </ProtectedRoute>
           }
         />
         <Route
           path="admin/tokens"
           element={
-            <ProtectedRoute allowedRoles={['2']}>
+            <ProtectedRoute allowedRoles={['1']}>
               <AdminTokens />
             </ProtectedRoute>
           }

@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { notifyUnauthorizedSession } from '../utils/authSession';
 
-const BASE_URL = import.meta.env.VITE_URL_API ?? '';
+const BASE_URL = import.meta.env.VITE_URL_API || '/api';
 
 // ─── Tipos ────────────────────────────────────────────────────────────
 
@@ -11,7 +12,7 @@ interface SuccessAlert {
 }
 
 interface FetchOptions {
-    body?: Record<string, unknown>;
+    body?: unknown;
     formData?: FormData;
     headers?: HeadersInit;
     successAlert?: SuccessAlert;
@@ -74,16 +75,22 @@ export function useFetch<T = unknown>(): UseFetchReturn<T> {
                 // ── Resposta não-ok → toast.error ───────────────
                 if (!response.ok) {
                     let errorMessage = `Erro ${response.status}: ${response.statusText}`;
+                    const shouldEndSession = response.status === 401 && url !== '/user/login';
 
                     try {
                         const errorBody = await response.json();
                         if (errorBody?.message) {
                             errorMessage = typeof errorBody.message === 'string'
                                 ? errorBody.message
-                                : JSON.stringify(errorBody.message);
+                                : errorBody.message.message;
                         }
                     } catch {
                         // resposta não é JSON, usa a mensagem padrão
+                    }
+
+                    if (shouldEndSession) {
+                        errorMessage = 'Sua sessão expirou. Faça login novamente.';
+                        notifyUnauthorizedSession();
                     }
 
                     setError(errorMessage);

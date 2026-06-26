@@ -1,12 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  --sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-  --text: #cbd5e1;
-  --text-h: #f8fafc;
-  --bg: #08111f;
+  --sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --heading: 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --bg-base: #eee8dc;
+  --bg-body: #f5f1e8;
+  --bg-surface: #fffaf0;
+  --bg-elevated: #ffffff;
+  --sidebar-bg: #20231f;
+  --sidebar-soft: #2b2f2a;
+  --accent: #a86535;
+  --accent-strong: #8d4f25;
+  --accent-soft: #efe0cf;
+  --text-primary: #1f1d19;
+  --text-secondary: #625d54;
+  --text-muted: #8a8378;
+  --text-inverse: #fbf6ea;
+  --border-neutral: rgba(31, 29, 25, 0.12);
+  --border-strong: rgba(31, 29, 25, 0.2);
+
+  --background: var(--bg-body);
+  --foreground: var(--text-primary);
+  --card: var(--bg-surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent);
+  --primary-foreground: var(--text-inverse);
+  --secondary: var(--accent-soft);
+  --secondary-foreground: var(--accent-strong);
+  --muted: #ebe3d6;
+  --muted-foreground: var(--text-secondary);
+  --accent-foreground: var(--text-inverse);
+  --destructive: #a64235;
+  --border: var(--border-neutral);
+  --input: rgba(31, 29, 25, 0.16);
+  --ring: rgba(168, 101, 53, 0.42);
+  --chart-1: #a86535;
+  --chart-2: #625d54;
+  --chart-3: #d6aa76;
+  --chart-4: #7f8a63;
+  --chart-5: #b46a5a;
+  --radius: 0.875rem;
+  --sidebar: var(--sidebar-bg);
+  --sidebar-foreground: var(--text-inverse);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--text-inverse);
+  --sidebar-accent: var(--sidebar-soft);
+  --sidebar-accent-foreground: var(--text-inverse);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: rgba(168, 101, 53, 0.42);
+
+  --text: var(--text-secondary);
+  --text-h: var(--text-primary);
+  --bg: var(--bg-body);
 }
 
 * {
@@ -25,7 +78,7 @@ body,
 body {
   margin: 0;
   overflow: hidden;
-  background: var(--bg);
+  background: var(--bg-body);
   color: var(--text);
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
@@ -36,22 +89,17 @@ body {
   min-height: 100vh;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  margin: 0;
-  font-family: var(--heading);
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  line-height: 1.1;
-  letter-spacing: -1.2px;
-  font-weight: 700;
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: 0;
+    font-family: var(--heading);
+    color: var(--text-h);
+  }
 }
 
 p {
@@ -60,11 +108,131 @@ p {
 }
 
 a {
-  text-decoration: none;
   color: inherit;
+  text-decoration: none;
 }
 
 code,
 .counter {
   font-family: var(--mono);
+}
+
+::selection {
+  background: rgba(168, 101, 53, 0.22);
+  color: var(--text-primary);
+}
+
+* {
+  scrollbar-color: rgba(98, 93, 84, 0.34) transparent;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(98, 93, 84, 0.28);
+  border-radius: 999px;
+}
+
+@keyframes fade-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes typing-dot {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+.animate-fade-slide-up {
+  animation: fade-slide-up 180ms ease-out both;
+}
+
+.animate-typing-dot {
+  animation: typing-dot 600ms ease-in-out infinite;
+}
+
+@theme inline {
+  --font-heading: var(--heading);
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
 }
